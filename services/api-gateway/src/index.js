@@ -8,6 +8,10 @@ const client = require('prom-client');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ENABLE_RATE_LIMIT =
+  process.env.ENABLE_RATE_LIMIT === undefined
+    ? true
+    : process.env.ENABLE_RATE_LIMIT !== 'false';
 
 // Prometheus metrics setup
 const register = new client.Registry();
@@ -37,24 +41,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Metrics middleware for API Gateway
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = (Date.now() - start) / 1000;
-    httpRequestDuration.labels(req.method, req.path, res.statusCode).observe(duration);
-  });
-  next();
-});
-
-
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute window
   max: 1000, // 1000 requests per minute (very generous for development)
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use(limiter);
+if (ENABLE_RATE_LIMIT) {
+  app.use(limiter);
+}
 
 // Health check
 app.get('/health', (req, res) => {

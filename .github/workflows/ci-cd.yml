@@ -3,10 +3,10 @@ name: CI/CD - CareForAll
 on:
   push:
     branches:
-      - main
+      - main , claude/fix-grafana-prometheus-01D13D5FLByqLQEak8U92KSH
   pull_request:
     branches:
-      - main
+      - main, claude/fix-grafana-prometheus-01D13D5FLByqLQEak8U92KSH
 
 jobs:
   detect-changed-services:

@@ -17,8 +17,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(load_tester_requests_total[5s]))",
-          "legendFormat": "total rps",
+          "expr": "sum(rate(load_tester_requests_total{job=\"load-tester\"}[30s]))",
+          "legendFormat": "total rps (30s)",
           "refId": "A"
         }
       ]
@@ -33,8 +33,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(load_tester_requests_total{status!=\"ok\"}[5s]))",
-          "legendFormat": "errors rps",
+          "expr": "sum(rate(load_tester_requests_total{job=\"load-tester\",status!=\"ok\"}[30s]))",
+          "legendFormat": "errors rps (30s)",
           "refId": "A"
         }
       ]
@@ -55,8 +55,8 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(load_tester_request_duration_seconds_bucket[5s])) by (le))",
-          "legendFormat": "p95",
+          "expr": "histogram_quantile(0.95, sum(rate(load_tester_request_duration_seconds_bucket{job=\"load-tester\"}[30s])) by (le))",
+          "legendFormat": "p95 (30s)",
           "refId": "A"
         }
       ]
