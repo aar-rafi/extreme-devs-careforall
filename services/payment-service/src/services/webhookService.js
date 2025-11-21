@@ -86,6 +86,15 @@ class WebhookService {
       return false;
     }
 
+    // DEVELOPMENT MODE: Skip SSL Commerz validation for simulated webhooks
+    if (process.env.NODE_ENV === 'development' && val_id && val_id.startsWith('SIMULATED-')) {
+      logger.info('Development mode: Skipping SSL Commerz validation for simulated webhook', {
+        tran_id,
+        val_id
+      });
+      return true;
+    }
+
     // If val_id is provided, validate with SSL Commerz
     if (val_id) {
       try {

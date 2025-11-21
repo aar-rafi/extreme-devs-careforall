@@ -3,6 +3,8 @@ name: CI/CD - CareForAll
 on:
   # Run CI on every push to any branch
   push:
+    branches:
+      - main
   # Require CI on PRs into the default branch
   pull_request:
     branches:
@@ -216,7 +218,6 @@ jobs:
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
       (needs.frontend-ci.result == 'success' || needs.frontend-ci.result == 'skipped')
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy on OVH VM via SSH
         uses: appleboy/ssh-action@v1.0.0
