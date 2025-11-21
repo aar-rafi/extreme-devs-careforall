@@ -33,7 +33,7 @@ export interface AdminUser {
 
 export const adminApi = {
   getStats: async (): Promise<ApiResponse<AdminStats>> => {
-    const response = await apiClient.get<ApiResponse<AdminStats>>('/api/admin/stats');
+    const response = await apiClient.get<ApiResponse<AdminStats>>('/api/admin/dashboard/stats');
     return response.data;
   },
 
@@ -72,7 +72,7 @@ export const adminApi = {
   updateUserStatus: async (userId: string, is_active: boolean): Promise<ApiResponse<AdminUser>> => {
     const response = await apiClient.patch<ApiResponse<AdminUser>>(
       `/api/admin/users/${userId}/status`,
-      { is_active }
+      { isActive: is_active }
     );
     return response.data;
   },
