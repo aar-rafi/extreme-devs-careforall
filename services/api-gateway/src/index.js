@@ -39,6 +39,7 @@ const routes = {
   '/api/query': process.env.QUERY_SERVICE_URL || 'http://query-service:3005',
   '/api/admin': process.env.ADMIN_SERVICE_URL || 'http://admin-service:3006',
   '/api/notifications': process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3007',
+  '/api/chat': process.env.CHATBOT_SERVICE_URL || 'http://chatbot-service:3008',
 };
 
 // Setup proxies - each service handles its own /api/* paths

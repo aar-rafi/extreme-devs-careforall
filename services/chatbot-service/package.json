@@ -1,0 +1,21 @@
+{
+  "name": "@careforall/chatbot-service",
+  "version": "1.0.0",
+  "description": "AI Chatbot service with Bangla language support for CareForAll platform",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "@careforall/shared": "file:../../shared",
+    "express": "^4.18.2",
+    "joi": "^17.11.0",
+    "axios": "^1.6.2",
+    "uuid": "^9.0.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

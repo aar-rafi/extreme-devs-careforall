@@ -61,6 +61,7 @@ services:
       - QUERY_SERVICE_URL=http://query-service:3005
       - ADMIN_SERVICE_URL=http://admin-service:3006
       - NOTIFICATION_SERVICE_URL=http://notification-service:3007
+      - CHATBOT_SERVICE_URL=http://chatbot-service:3008
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "${API_GATEWAY_PORT:-3000}:3000"
@@ -72,6 +73,7 @@ services:
       - query-service
       - admin-service
       - notification-service
+      - chatbot-service
     networks:
       - careforall-network
 
@@ -223,6 +225,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - careforall-network
+
+  # Chatbot Service (AI Chatbot with Bangla Support)
+  chatbot-service:
+    build:
+      context: .
+      dockerfile: services/chatbot-service/Dockerfile
+    container_name: careforall-chatbot-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
+      - REDIS_URL=redis://redis:6379
+      - PORT=3008
+      - QUERY_SERVICE_URL=http://query-service:3005
+      - CAMPAIGN_SERVICE_URL=http://campaign-service:3002
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - SERVICE_NAME=chatbot-service
+    ports:
+      - "${CHATBOT_SERVICE_PORT:-3008}:3008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      query-service:
+        condition: service_started
     networks:
       - careforall-network
 
