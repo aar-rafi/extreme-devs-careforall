@@ -1,0 +1,362 @@
+Project {
+  database_type: "PostgreSQL"
+  note: 'CareForAll microservices database'
+}
+
+////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////
+
+Enum user_role {
+  USER
+  ADMIN
+}
+
+Enum campaign_type_enum {
+  medical
+  education
+  emergency
+  long_term
+}
+
+Enum campaign_status_enum {
+  draft
+  active
+  completed
+  cancelled
+  expired
+}
+
+Enum pledge_status_enum {
+  pending
+  payment_initiated
+  completed
+  failed
+  refunded
+  cancelled
+}
+
+Enum payment_status_enum {
+  pending
+  authorized
+  captured
+  completed
+  failed
+  refunded
+}
+
+Enum notification_type_enum {
+  email
+  sms
+  push
+  in_app
+}
+
+Enum notification_status_enum {
+  pending
+  sent
+  failed
+  bounced
+}
+
+Enum system_notification_severity_enum {
+  low
+  medium
+  high
+  critical
+}
+
+////////////////////////////////////////////////////
+// auth schema
+////////////////////////////////////////////////////
+
+Table auth.users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email varchar(255) [not null, unique]
+  password_hash varchar(255) [not null]
+  role user_role [not null, default: `'USER'`]
+  is_active boolean [not null, default: true]
+  email_verified boolean [not null, default: false]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Authentication users'
+}
+
+Table auth.user_profiles {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null, ref: > auth.users.id]
+  first_name varchar(100)
+  last_name varchar(100)
+  phone varchar(20)
+  avatar_url text
+  bio text
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+
+  indexes {
+    (user_id) [unique]
+  }
+
+  note: 'Additional user profile information'
+}
+
+Table auth.refresh_tokens {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null, ref: > auth.users.id]
+  token varchar(500) [not null, unique]
+  expires_at timestamp [not null]
+  created_at timestamp [not null, default: `now()`]
+
+  note: 'Refresh tokens for JWT sessions'
+}
+
+////////////////////////////////////////////////////
+// campaigns schema
+////////////////////////////////////////////////////
+
+Table campaigns.campaigns {
+  id uuid [pk, default: `gen_random_uuid()`]
+  title varchar(255) [not null]
+  description text [not null]
+  campaign_type campaign_type_enum [not null]
+  goal_amount decimal(15, 2) [not null]
+  current_amount decimal(15, 2) [not null, default: 0]
+  start_date timestamp [not null, default: `now()`]
+  end_date timestamp
+  status campaign_status_enum [not null, default: 'draft']
+  organizer_id uuid [not null] // auth_users.id
+  beneficiary_name varchar(255)
+  beneficiary_details text
+  image_url text
+  documents jsonb
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Fundraising campaigns'
+}
+
+////////////////////////////////////////////////////
+// pledges schema
+////////////////////////////////////////////////////
+
+Table pledges.pledges {
+  id uuid [pk, default: `gen_random_uuid()`]
+  campaign_id uuid [not null] // campaigns.campaigns.id
+  user_id uuid // auth.users.id, nullable for anonymous
+  donor_email varchar(255) [not null]
+  donor_name varchar(255)
+  amount decimal(15, 2) [not null]
+  currency varchar(3) [not null, default: 'BDT']
+  status pledge_status_enum [not null, default: 'pending']
+  is_anonymous boolean [not null, default: false]
+  message text
+  payment_reference varchar(255)
+  metadata jsonb
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Donation pledges (before payment)'
+}
+
+Table pledges.outbox {
+  id uuid [pk, default: `gen_random_uuid()`]
+  aggregate_id uuid [not null]
+  aggregate_type varchar(50) [not null]
+  event_type varchar(100) [not null]
+  payload jsonb [not null]
+  processed boolean [not null, default: false]
+  retry_count int [not null, default: 0]
+  last_error text
+  created_at timestamp [not null, default: `now()`]
+  processed_at timestamp
+
+  note: 'Outbox for reliable event publishing'
+}
+
+////////////////////////////////////////////////////
+// payments schema
+////////////////////////////////////////////////////
+
+Table payments.payments {
+  id uuid [pk, default: `gen_random_uuid()`]
+  pledge_id uuid [not null, unique] // pledges.pledges.id
+  transaction_id varchar(255)
+  payment_method varchar(50)
+  amount decimal(15, 2) [not null]
+  currency varchar(3) [not null, default: 'BDT']
+  status payment_status_enum [not null, default: 'pending']
+  gateway_response jsonb
+  error_message text
+  refund_reason text
+  refunded_at timestamp
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Payment records for pledges'
+}
+
+Table payments.idempotency_keys {
+  id uuid [pk, default: `gen_random_uuid()`]
+  idempotency_key varchar(255) [not null, unique]
+  request_hash varchar(255) [not null]
+  response jsonb
+  status_code int
+  created_at timestamp [not null, default: `now()`]
+  expires_at timestamp [not null]
+
+  note: 'Idempotency keys for payment API'
+}
+
+Table payments.webhook_logs {
+  id uuid [pk, default: `gen_random_uuid()`]
+  webhook_id varchar(255) [not null, unique]
+  event_type varchar(100) [not null]
+  payload jsonb [not null]
+  processed boolean [not null, default: false]
+  error_message text
+  processed_at timestamp
+  created_at timestamp [not null, default: `now()`]
+
+  note: 'SSLCommerz webhook tracking'
+}
+
+Table payments.payment_state_history {
+  id uuid [pk, default: `gen_random_uuid()`]
+  payment_id uuid [not null, ref: > payments.payments.id]
+  from_status varchar(20)
+  to_status varchar(20) [not null]
+  reason text
+  created_at timestamp [not null, default: `now()`]
+
+  note: 'Audit trail of payment status changes'
+}
+
+////////////////////////////////////////////////////
+// query schema (read models)
+////////////////////////////////////////////////////
+
+Table query.campaign_totals {
+  campaign_id uuid [pk] // campaigns.campaigns.id
+  title varchar(255)
+  campaign_type campaign_type_enum
+  goal_amount decimal(15, 2)
+  raised_amount decimal(15, 2) [not null, default: 0]
+  donor_count int [not null, default: 0]
+  last_donation_at timestamp
+  status campaign_status_enum
+  progress_percentage decimal(5, 2)
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Aggregated metrics per campaign'
+}
+
+Table query.donation_history {
+  id uuid [pk, default: `gen_random_uuid()`]
+  pledge_id uuid [not null] // pledges.pledges.id
+  campaign_id uuid [not null] // campaigns.campaigns.id
+  campaign_title varchar(255)
+  donor_id uuid // auth.users.id
+  donor_name varchar(255)
+  donor_email varchar(255)
+  amount decimal(15, 2) [not null]
+  is_anonymous boolean [not null, default: false]
+  message text
+  donated_at timestamp [not null]
+  created_at timestamp [not null, default: `now()`]
+
+  note: 'Donation history for UI queries'
+}
+
+Table query.user_statistics {
+  user_id uuid [pk] // auth.users.id
+  total_donated decimal(15, 2) [not null, default: 0]
+  donation_count int [not null, default: 0]
+  campaigns_supported int [not null, default: 0]
+  first_donation_at timestamp
+  last_donation_at timestamp
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Cached aggregates per user'
+}
+
+Table query.platform_statistics {
+  id int [pk, default: 1]
+  total_raised decimal(15, 2) [not null, default: 0]
+  total_campaigns int [not null, default: 0]
+  total_donors int [not null, default: 0]
+  total_donations int [not null, default: 0]
+  active_campaigns int [not null, default: 0]
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Single-row platform-wide statistics'
+}
+
+////////////////////////////////////////////////////
+// admin schema
+////////////////////////////////////////////////////
+
+Table admin.audit_logs {
+  id uuid [pk, default: `gen_random_uuid()`]
+  admin_id uuid [not null] // auth.users.id
+  action varchar(100) [not null]
+  entity_type varchar(50)
+  entity_id uuid
+  details jsonb
+  ip_address inet
+  user_agent text
+  created_at timestamp [not null, default: `now()`]
+
+  note: 'Admin action audit logs'
+}
+
+Table admin.system_notifications {
+  id uuid [pk, default: `gen_random_uuid()`]
+  type varchar(50) [not null]
+  title varchar(255) [not null]
+  message text [not null]
+  severity system_notification_severity_enum
+  is_read boolean [not null, default: false]
+  metadata jsonb
+  created_at timestamp [not null, default: `now()`]
+
+  note: 'System notifications for admins'
+}
+
+////////////////////////////////////////////////////
+// notifications schema
+////////////////////////////////////////////////////
+
+Table notifications.notification_history {
+  id uuid [pk, default: `gen_random_uuid()`]
+  notification_type notification_type_enum [not null]
+  event_type varchar(100) [not null]
+  event_id varchar(255)
+  recipient_email varchar(255)
+  recipient_phone varchar(20)
+  recipient_user_id uuid // auth.users.id
+  subject varchar(255)
+  template_name varchar(100)
+  template_data jsonb
+  status notification_status_enum [not null, default: 'pending']
+  error_message text
+  sent_at timestamp
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'History of sent notifications'
+}
+
+Table notifications.push_subscriptions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null] // auth.users.id
+  endpoint text [not null, unique]
+  p256dh text [not null]
+  auth text [not null]
+  user_agent text
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+
+  note: 'Web push subscriptions'
+}

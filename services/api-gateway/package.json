@@ -14,6 +14,7 @@
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5",
     "http-proxy-middleware": "^2.0.6",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "prom-client": "^15.1.0"
   }
 }

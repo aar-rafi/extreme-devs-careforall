@@ -58,12 +58,34 @@ scrape_configs:
       - targets: ['notification-service:3007']
     metrics_path: '/metrics'
 
-  # PostgreSQL
+  # PostgreSQL Exporter
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
 
-  # Redis
+  # Redis Exporter
   - job_name: 'redis'
     static_configs:
       - targets: ['redis-exporter:9121']
+
+  # Node Exporter (System Metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor (Container Metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: '/metrics'
+
+  # Load Tester
+  - job_name: load-tester
+    honor_timestamps: true
+    track_timestamps_staleness: false
+    scrape_interval: 5s
+    scrape_timeout: 5s
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+    - targets: ['careforall-load-tester:9101']
