@@ -25,7 +25,7 @@ import { formatDistanceToNow } from 'date-fns';
 const pledgeSchema = z.object({
   amount: z.number().min(10, 'Minimum donation is ৳10'),
   is_anonymous: z.boolean().default(false),
-  message: z.string().optional(),
+  message: z.string().optional().default(''),
   donor_email: z.string().email('Invalid email').optional(),
   donor_name: z.string().optional(),
 });
@@ -61,10 +61,12 @@ export default function CampaignDetailsPage() {
     formState: { errors },
     reset,
     setValue,
-  } = useForm<PledgeFormData>({
+  } = useForm({
     resolver: zodResolver(pledgeSchema),
     defaultValues: {
+      amount: 0,
       is_anonymous: false,
+      message: '',
     },
   });
 
@@ -91,7 +93,8 @@ export default function CampaignDetailsPage() {
 
       // Step 2: Initiate payment with idempotency key
       const idempotencyKey = uuidv4();
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000';
+      const baseUrl =
+        typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000';
 
       const paymentResponse = await paymentsApi.initiate(
         {
@@ -202,22 +205,24 @@ export default function CampaignDetailsPage() {
                         style={{ width: `${Math.min(progress, 100)}%` }}
                       />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {Math.round(progress)}% funded
-                    </p>
+                    <p className="text-sm text-muted-foreground">{Math.round(progress)}% funded</p>
                   </div>
 
                   {/* Description */}
                   <div>
                     <h3 className="text-xl font-semibold mb-3">About this campaign</h3>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{campaign.description}</p>
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {campaign.description}
+                    </p>
                   </div>
 
-                  {/* Campaign Details */}
-                  {campaign.details && (
+                  {/* Beneficiary Details */}
+                  {campaign.beneficiary_details && (
                     <div>
-                      <h3 className="text-xl font-semibold mb-3">Campaign Details</h3>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{campaign.details}</p>
+                      <h3 className="text-xl font-semibold mb-3">Beneficiary Details</h3>
+                      <p className="text-muted-foreground whitespace-pre-wrap">
+                        {campaign.beneficiary_details}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -253,7 +258,9 @@ export default function CampaignDetailsPage() {
                                   'Donor'}
                             </p>
                             {donation.message && (
-                              <p className="text-sm text-muted-foreground mt-1">{donation.message}</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {donation.message}
+                              </p>
                             )}
                             <p className="text-xs text-muted-foreground mt-1">
                               {formatDistanceToNow(new Date(donation.created_at))} ago

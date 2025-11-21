@@ -15,9 +15,9 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./database/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - '${POSTGRES_PORT:-5432}:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,9 +32,9 @@ services:
     volumes:
       - redis-data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - '${REDIS_PORT:-6379}:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,7 +63,7 @@ services:
       - NOTIFICATION_SERVICE_URL=http://notification-service:3007
       - JWT_SECRET=${JWT_SECRET}
     ports:
-      - "${API_GATEWAY_PORT:-3000}:3000"
+      - '${API_GATEWAY_PORT:-3000}:3000'
     depends_on:
       - auth-service
       - campaign-service
@@ -227,6 +227,48 @@ services:
       - careforall-network
 
   # ============================================================================
+  # Frontend Applications
+  # ============================================================================
+
+  # Client Frontend
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    container_name: careforall-client
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+      - PORT=4000
+    ports:
+      - '${CLIENT_PORT:-4000}:4000'
+    depends_on:
+      - api-gateway
+    networks:
+      - careforall-network
+
+  # Admin Dashboard
+  admin-dashboard:
+    build:
+      context: .
+      dockerfile: admin-dashboard/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    container_name: careforall-admin-dashboard
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+      - PORT=4001
+    ports:
+      - '${ADMIN_PORT:-4001}:4001'
+    depends_on:
+      - api-gateway
+    networks:
+      - careforall-network
+
+  # ============================================================================
   # Monitoring & Observability
   # ============================================================================
 
@@ -240,7 +282,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - PORT=3100
     ports:
-      - "${BULL_BOARD_PORT:-3100}:3100"
+      - '${BULL_BOARD_PORT:-3100}:3100'
     depends_on:
       redis:
         condition: service_healthy
@@ -258,7 +300,7 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - '${PROMETHEUS_PORT:-9090}:9090'
     networks:
       - careforall-network
 
@@ -269,12 +311,12 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "${GRAFANA_PORT:-3333}:3000"
+      - '${GRAFANA_PORT:-3333}:3000'
     depends_on:
       - prometheus
     networks:
@@ -287,7 +329,7 @@ services:
     environment:
       - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}?sslmode=disable
     ports:
-      - "9187:9187"
+      - '9187:9187'
     depends_on:
       postgres:
         condition: service_healthy
@@ -301,7 +343,7 @@ services:
     environment:
       - REDIS_ADDR=redis://redis:6379
     ports:
-      - "9121:9121"
+      - '9121:9121'
     depends_on:
       redis:
         condition: service_healthy
@@ -322,7 +364,7 @@ services:
       - /sys:/host/sys:ro
       - /:/host:ro
     ports:
-      - "9100:9100"
+      - '9100:9100'
     networks:
       - careforall-network
 
@@ -338,7 +380,7 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     ports:
-      - "8080:8080"
+      - '8080:8080'
     networks:
       - careforall-network
 
@@ -349,11 +391,11 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
     ports:
-      - "${ELASTICSEARCH_PORT:-9200}:9200"
+      - '${ELASTICSEARCH_PORT:-9200}:9200'
     networks:
       - careforall-network
 
@@ -364,7 +406,7 @@ services:
     volumes:
       - ./monitoring/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     environment:
-      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+      - 'LS_JAVA_OPTS=-Xms256m -Xmx256m'
     depends_on:
       - elasticsearch
     networks:
@@ -377,7 +419,7 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
-      - "${KIBANA_PORT:-5601}:5601"
+      - '${KIBANA_PORT:-5601}:5601'
     depends_on:
       - elasticsearch
     networks:
@@ -390,9 +432,9 @@ services:
     environment:
       - COLLECTOR_ZIPKIN_HOST_PORT=:9411
     ports:
-      - "${JAEGER_UI_PORT:-16686}:16686"      # UI
-      - "${JAEGER_COLLECTOR_PORT:-14268}:14268"  # Collector HTTP
-      - "6831:6831/udp"  # Agent compact thrift
+      - '${JAEGER_UI_PORT:-16686}:16686' # UI
+      - '${JAEGER_COLLECTOR_PORT:-14268}:14268' # Collector HTTP
+      - '6831:6831/udp' # Agent compact thrift
     networks:
       - careforall-network
 
