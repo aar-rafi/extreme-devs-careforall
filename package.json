@@ -1,0 +1,43 @@
+{
+  "name": "careforall-platform",
+  "version": "1.0.0",
+  "description": "CareForAll - Next-generation fundraising platform with microservices architecture",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "shared/*"
+  ],
+  "scripts": {
+    "dev": "docker-compose up",
+    "dev:build": "docker-compose up --build",
+    "down": "docker-compose down",
+    "logs": "docker-compose logs -f",
+    "clean": "docker-compose down -v",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "format": "prettier --write \"**/*.{js,json,md}\""
+  },
+  "keywords": [
+    "fundraising",
+    "microservices",
+    "nodejs",
+    "express",
+    "postgresql",
+    "redis",
+    "bullmq",
+    "docker"
+  ],
+  "author": "API Avengers",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.1.0",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

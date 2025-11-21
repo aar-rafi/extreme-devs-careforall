@@ -1,0 +1,22 @@
+{
+  "name": "@careforall/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and configurations for CareForAll services",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "redis": "^4.6.11",
+    "bullmq": "^5.1.5",
+    "winston": "^3.11.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

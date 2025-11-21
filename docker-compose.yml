@@ -1,0 +1,354 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Infrastructure Services
+  # ============================================================================
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: careforall-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-careforall}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careforall-network
+
+  # Redis (Cache + BullMQ)
+  redis:
+    image: redis:7-alpine
+    container_name: careforall-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - careforall-network
+
+  # ============================================================================
+  # Microservices
+  # ============================================================================
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: careforall-api-gateway
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - CAMPAIGN_SERVICE_URL=http://campaign-service:3002
+      - PLEDGE_SERVICE_URL=http://pledge-service:3003
+      - PAYMENT_SERVICE_URL=http://payment-service:3004
+      - QUERY_SERVICE_URL=http://query-service:3005
+      - ADMIN_SERVICE_URL=http://admin-service:3006
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3007
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "${API_GATEWAY_PORT:-3000}:3000"
+    depends_on:
+      - auth-service
+      - campaign-service
+      - pledge-service
+      - payment-service
+      - query-service
+      - admin-service
+      - notification-service
+    networks:
+      - careforall-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: careforall-auth-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
+      - REFRESH_TOKEN_EXPIRES_IN=${REFRESH_TOKEN_EXPIRES_IN:-7d}
+      - SERVICE_NAME=auth-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - careforall-network
+
+  # Campaign Service
+  campaign-service:
+    build:
+      context: ./services/campaign-service
+      dockerfile: Dockerfile
+    container_name: careforall-campaign-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=campaign-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+    networks:
+      - careforall-network
+
+  # Pledge Service
+  pledge-service:
+    build:
+      context: ./services/pledge-service
+      dockerfile: Dockerfile
+    container_name: careforall-pledge-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=pledge-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - careforall-network
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: careforall-payment-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
+      - REDIS_URL=redis://redis:6379
+      - SSLCOMMERZ_STORE_ID=${SSLCOMMERZ_STORE_ID}
+      - SSLCOMMERZ_STORE_PASSWORD=${SSLCOMMERZ_STORE_PASSWORD}
+      - SSLCOMMERZ_API_URL=${SSLCOMMERZ_API_URL:-https://sandbox.sslcommerz.com}
+      - SERVICE_NAME=payment-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - careforall-network
+
+  # Query Service (CQRS Read Model)
+  query-service:
+    build:
+      context: ./services/query-service
+      dockerfile: Dockerfile
+    container_name: careforall-query-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=query-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 3
+    networks:
+      - careforall-network
+
+  # Admin Service
+  admin-service:
+    build:
+      context: ./services/admin-service
+      dockerfile: Dockerfile
+    container_name: careforall-admin-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=admin-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - careforall-network
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: careforall-notification-service
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - REDIS_URL=redis://redis:6379
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM:-noreply@careforall.com}
+      - SERVICE_NAME=notification-service
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - careforall-network
+
+  # ============================================================================
+  # Monitoring & Observability
+  # ============================================================================
+
+  # Bull Board (Queue Monitoring)
+  bull-board:
+    build:
+      context: ./services/bull-board
+      dockerfile: Dockerfile
+    container_name: careforall-bull-board
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=3100
+    ports:
+      - "${BULL_BOARD_PORT:-3100}:3100"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - careforall-network
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: careforall-prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - careforall-network
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: careforall-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - careforall-network
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: careforall-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    networks:
+      - careforall-network
+
+  # Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: careforall-logstash
+    volumes:
+      - ./monitoring/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    environment:
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+    depends_on:
+      - elasticsearch
+    networks:
+      - careforall-network
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: careforall-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - careforall-network
+
+  # Jaeger (Distributed Tracing)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: careforall-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"      # UI
+      - "${JAEGER_COLLECTOR_PORT:-14268}:14268"  # Collector HTTP
+      - "6831:6831/udp"  # Agent compact thrift
+    networks:
+      - careforall-network
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  careforall-network:
+    driver: bridge
+    name: careforall-network
