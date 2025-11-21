@@ -2,7 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const { logger } = require('@careforall/shared');
+const {
+  logger,
+  metricsMiddleware,
+  metricsEndpoint
+} = require('@careforall/shared');
 const { getPool } = require('@careforall/shared/database/pool');
 
 // Services
@@ -19,11 +23,13 @@ const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3007;
+const SERVICE_NAME = process.env.SERVICE_NAME || 'notification-service';
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(metricsMiddleware(SERVICE_NAME));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -33,6 +39,9 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Metrics endpoint for Prometheus
+app.get('/metrics', metricsEndpoint);
 
 // API routes
 app.use('/api/notifications', notificationRoutes);

@@ -10,6 +10,15 @@ const { createQueue, getQueue, publishEvent, createConsumer } = require('./utils
 // Middleware
 const { errorHandler, AppError } = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/requestLogger');
+const {
+  metricsMiddleware,
+  metricsEndpoint,
+  trackDbQuery,
+  trackDbPool,
+  trackQueueJob,
+  trackError,
+  metrics
+} = require('./middleware/metricsMiddleware');
 
 // Config
 const { EVENTS, QUEUES } = require('./config/events');
@@ -37,6 +46,13 @@ module.exports = {
   errorHandler,
   AppError,
   requestLogger,
+  metricsMiddleware,
+  metricsEndpoint,
+  trackDbQuery,
+  trackDbPool,
+  trackQueueJob,
+  trackError,
+  metrics,
 
   // Config
   EVENTS,

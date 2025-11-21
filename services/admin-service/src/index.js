@@ -2,7 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const { logger } = require('@careforall/shared');
+const {
+  logger,
+  metricsMiddleware,
+  metricsEndpoint
+} = require('@careforall/shared');
 const { getPool } = require('@careforall/shared/database/pool');
 
 // Import routes
@@ -10,11 +14,13 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3006;
+const SERVICE_NAME = process.env.SERVICE_NAME || 'admin-service';
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(metricsMiddleware(SERVICE_NAME));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -38,6 +44,9 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Metrics endpoint for Prometheus
+app.get('/metrics', metricsEndpoint);
 
 // Admin API routes
 app.use('/api/admin', adminRoutes);

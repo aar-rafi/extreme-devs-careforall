@@ -4,15 +4,38 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
+const client = require('prom-client');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Prometheus metrics setup
+const register = new client.Registry();
+client.collectDefaultMetrics({ register, prefix: 'careforall_gateway_' });
+
+const httpRequestDuration = new client.Histogram({
+  name: 'careforall_gateway_http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5],
+  registers: [register],
+});
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 // Note: express.json() removed - API Gateway is a pure proxy
 // Backend services handle their own body parsing
+
+// Metrics middleware for API Gateway
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    httpRequestDuration.labels(req.method, req.path, res.statusCode).observe(duration);
+  });
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -24,6 +47,17 @@ app.use(limiter);
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', service: 'api-gateway', timestamp: new Date().toISOString() });
+});
+
+// Metrics endpoint for Prometheus
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    const metrics = await register.metrics();
+    res.end(metrics);
+  } catch (error) {
+    res.status(500).end(error);
+  }
 });
 
 // Route proxying
