@@ -11,7 +11,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+// Note: express.json() removed - API Gateway is a pure proxy
+// Backend services handle their own body parsing
 
 // Rate limiting
 const limiter = rateLimit({
