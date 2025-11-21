@@ -15,19 +15,21 @@ class PledgeService {
     try {
       await client.query('BEGIN');
 
-      const { campaign_id, user_id, amount, message, is_anonymous } = pledgeData;
+      const { campaign_id, user_id, amount, message, is_anonymous, donor_email, donor_name } = pledgeData;
 
       // Create the pledge
       const pledgeQuery = `
-        INSERT INTO pledges.pledges (campaign_id, user_id, amount, message, is_anonymous, status)
-        VALUES ($1, $2, $3, $4, $5, 'pending')
+        INSERT INTO pledges.pledges (campaign_id, user_id, donor_email, donor_name, amount, message, is_anonymous, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
         RETURNING *
       `;
       const pledgeResult = await client.query(pledgeQuery, [
         campaign_id,
-        user_id,
+        user_id || null,
+        donor_email,
+        donor_name || null,
         amount,
-        message,
+        message || null,
         is_anonymous || false,
       ]);
       const pledge = pledgeResult.rows[0];

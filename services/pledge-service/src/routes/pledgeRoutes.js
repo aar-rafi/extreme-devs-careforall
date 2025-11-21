@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const pledgeController = require('../controllers/pledgeController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { verifyToken, optionalAuth } = require('../middleware/authMiddleware');
 
-// All pledge routes require authentication
-router.use(verifyToken);
+// Create pledge - supports both authenticated and anonymous users
+router.post('/', optionalAuth, pledgeController.createPledge);
 
-router.post('/', pledgeController.createPledge);
-router.get('/', pledgeController.getUserPledges);
-router.get('/:id', pledgeController.getPledgeById);
-router.get('/campaign/:campaignId', pledgeController.getPledgesByCampaign);
-router.patch('/:id/cancel', pledgeController.cancelPledge);
+// Get pledge by ID - supports optional auth (for payment verification)
+router.get('/:id', optionalAuth, pledgeController.getPledgeById);
+
+// These routes require authentication
+router.get('/', verifyToken, pledgeController.getUserPledges);
+router.get('/campaign/:campaignId', verifyToken, pledgeController.getPledgesByCampaign);
+router.patch('/:id/cancel', verifyToken, pledgeController.cancelPledge);
 
 module.exports = router;

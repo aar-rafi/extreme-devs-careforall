@@ -11,7 +11,11 @@ class PledgeController {
         throw new AppError(error.details[0].message, 400, 'VALIDATION_ERROR');
       }
 
-      value.user_id = req.user.userId;
+      // Set user_id only if authenticated
+      if (req.user) {
+        value.user_id = req.user.userId;
+      }
+
       const pledge = await pledgeService.createPledge(value);
 
       return successResponse(res, pledge, 201);
@@ -29,8 +33,9 @@ class PledgeController {
         throw new AppError('Pledge not found', 404, 'PLEDGE_NOT_FOUND');
       }
 
-      // Users can only view their own pledges unless they're admin
-      if (pledge.user_id !== req.user.userId && req.user.role !== 'ADMIN') {
+      // Allow authenticated users to only view their own pledges (unless admin)
+      // Allow anonymous users to view any pledge by ID (needed for payment verification)
+      if (req.user && pledge.user_id && pledge.user_id !== req.user.userId && req.user.role !== 'ADMIN') {
         throw new AppError('Not authorized to view this pledge', 403, 'FORBIDDEN');
       }
 

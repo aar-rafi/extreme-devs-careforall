@@ -279,9 +279,11 @@ class PaymentService {
         cus_add1: 'Dhaka',
         cus_city: 'Dhaka',
         cus_country: 'Bangladesh',
-        success_url: `${baseUrl}/api/payments/webhook/success`,
-        fail_url: `${baseUrl}/api/payments/webhook/fail`,
-        cancel_url: `${baseUrl}/api/payments/webhook/cancel`,
+        // Use frontend URLs for browser redirects (GET requests)
+        success_url: success_url,
+        fail_url: fail_url,
+        cancel_url: cancel_url,
+        // IPN for backend webhook (POST request)
         ipn_url: `${baseUrl}/api/payments/webhook/ipn`,
         shipping_method: 'NO',
       };

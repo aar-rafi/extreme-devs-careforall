@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,24 +16,27 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { campaignsApi } from '@/lib/api/campaigns';
-import { donationsApi, CreateDonationData } from '@/lib/api/donations';
+import { pledgesApi } from '@/lib/api/pledges';
+import { paymentsApi } from '@/lib/api/payments';
+import { donationsApi } from '@/lib/api/donations';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { formatDistanceToNow } from 'date-fns';
 
-const donationSchema = z.object({
+const pledgeSchema = z.object({
   amount: z.number().min(10, 'Minimum donation is ৳10'),
-  payment_method: z.string().min(1, 'Payment method is required'),
   is_anonymous: z.boolean().default(false),
   message: z.string().optional(),
+  donor_email: z.string().email('Invalid email').optional(),
+  donor_name: z.string().optional(),
 });
 
-type DonationFormData = z.infer<typeof donationSchema>;
+type PledgeFormData = z.infer<typeof pledgeSchema>;
 
 export default function CampaignDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const campaignId = params.id as string;
 
   const [error, setError] = useState('');
@@ -43,10 +47,13 @@ export default function CampaignDetailsPage() {
     queryFn: () => campaignsApi.getById(campaignId),
   });
 
-  const { data: donationsData, isLoading: donationsLoading } = useQuery({
-    queryKey: ['donations', campaignId],
-    queryFn: () => donationsApi.list({ campaign_id: campaignId, limit: 10 }),
-  });
+  // TODO: Implement pledges list endpoint for public viewing
+  // const { data: donationsData, isLoading: donationsLoading } = useQuery({
+  //   queryKey: ['donations', campaignId],
+  //   queryFn: () => donationsApi.list({ campaign_id: campaignId, limit: 10 }),
+  // });
+  const donationsData = null;
+  const donationsLoading = false;
 
   const {
     register,
@@ -54,50 +61,78 @@ export default function CampaignDetailsPage() {
     formState: { errors },
     reset,
     setValue,
-  } = useForm<DonationFormData>({
-    resolver: zodResolver(donationSchema),
+  } = useForm<PledgeFormData>({
+    resolver: zodResolver(pledgeSchema),
     defaultValues: {
-      payment_method: 'bkash',
       is_anonymous: false,
     },
   });
 
-  const donationMutation = useMutation({
-    mutationFn: (data: CreateDonationData) => donationsApi.create(data),
-    onSuccess: async (response) => {
-      setSuccess('Donation created successfully! Redirecting to payment...');
+  const pledgeMutation = useMutation({
+    mutationFn: async (data: PledgeFormData) => {
+      // Step 1: Create pledge
+      const pledgeData: any = {
+        campaign_id: campaignId,
+        amount: data.amount,
+        is_anonymous: data.is_anonymous,
+        message: data.message,
+      };
+
+      // For anonymous users, include email and name
+      if (!isAuthenticated) {
+        pledgeData.donor_email = data.donor_email;
+        pledgeData.donor_name = data.donor_name;
+      } else if (user) {
+        pledgeData.donor_email = user.email;
+      }
+
+      const pledgeResponse = await pledgesApi.create(pledgeData);
+      const pledgeId = pledgeResponse.data.id;
+
+      // Step 2: Initiate payment with idempotency key
+      const idempotencyKey = uuidv4();
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000';
+
+      const paymentResponse = await paymentsApi.initiate(
+        {
+          pledge_id: pledgeId,
+          success_url: `${baseUrl}/payment/success?pledge=${pledgeId}`,
+          fail_url: `${baseUrl}/payment/failed?pledge=${pledgeId}`,
+          cancel_url: `${baseUrl}/payment/cancelled?pledge=${pledgeId}`,
+        },
+        idempotencyKey
+      );
+
+      return { pledgeResponse, paymentResponse };
+    },
+    onSuccess: ({ paymentResponse }) => {
+      setSuccess('Redirecting to payment gateway...');
       reset();
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
       queryClient.invalidateQueries({ queryKey: ['donations', campaignId] });
 
-      // Initialize payment
-      if (response.data.id) {
-        const paymentResponse = await donationsApi.initializePayment(response.data.id);
-        if (paymentResponse.success && paymentResponse.data.payment_url) {
-          window.location.href = paymentResponse.data.payment_url;
-        }
+      // Redirect to payment gateway
+      if (paymentResponse.data.gateway_url) {
+        window.location.href = paymentResponse.data.gateway_url;
       }
     },
     onError: (err: any) => {
-      setError(err.response?.data?.error?.message || 'Failed to create donation');
+      setError(err.response?.data?.error?.message || 'Failed to process donation');
     },
   });
 
-  const onSubmit = (data: DonationFormData) => {
+  const onSubmit = (data: PledgeFormData) => {
+    // Validate anonymous user fields
     if (!isAuthenticated) {
-      router.push(`/login?redirect=/campaigns/${campaignId}`);
-      return;
+      if (!data.donor_email || !data.donor_name) {
+        setError('Email and name are required for anonymous donations');
+        return;
+      }
     }
 
     setError('');
     setSuccess('');
-    donationMutation.mutate({
-      campaign_id: campaignId,
-      amount: data.amount,
-      payment_method: data.payment_method,
-      is_anonymous: data.is_anonymous,
-      message: data.message,
-    });
+    pledgeMutation.mutate(data);
   };
 
   if (campaignLoading) {
@@ -283,22 +318,36 @@ export default function CampaignDetailsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_method">Payment Method</Label>
-                      <select
-                        id="payment_method"
-                        className="w-full px-3 py-2 border rounded-md"
-                        {...register('payment_method')}
-                      >
-                        <option value="bkash">bKash</option>
-                        <option value="nagad">Nagad</option>
-                        <option value="rocket">Rocket</option>
-                        <option value="card">Credit/Debit Card</option>
-                      </select>
-                      {errors.payment_method && (
-                        <p className="text-sm text-red-500">{errors.payment_method.message}</p>
-                      )}
-                    </div>
+                    {/* Anonymous user fields */}
+                    {!isAuthenticated && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="donor_email">Email *</Label>
+                          <Input
+                            id="donor_email"
+                            type="email"
+                            placeholder="your@email.com"
+                            {...register('donor_email')}
+                          />
+                          {errors.donor_email && (
+                            <p className="text-sm text-red-500">{errors.donor_email.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="donor_name">Name *</Label>
+                          <Input
+                            id="donor_name"
+                            type="text"
+                            placeholder="Your name"
+                            {...register('donor_name')}
+                          />
+                          {errors.donor_name && (
+                            <p className="text-sm text-red-500">{errors.donor_name.message}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
 
                     <div className="space-y-2">
                       <Label htmlFor="message">Message (Optional)</Label>
@@ -321,15 +370,13 @@ export default function CampaignDetailsPage() {
                       </Label>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={donationMutation.isPending}>
-                      {donationMutation.isPending ? 'Processing...' : 'Donate Now'}
+                    <Button type="submit" className="w-full" disabled={pledgeMutation.isPending}>
+                      {pledgeMutation.isPending ? 'Processing...' : 'Proceed to Payment'}
                     </Button>
 
-                    {!isAuthenticated && (
-                      <p className="text-xs text-center text-muted-foreground">
-                        You'll be asked to login before completing the donation
-                      </p>
-                    )}
+                    <p className="text-xs text-center text-muted-foreground">
+                      You'll be redirected to SSL Commerz for secure payment
+                    </p>
                   </form>
                 </CardContent>
               </Card>

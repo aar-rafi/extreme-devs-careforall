@@ -75,10 +75,11 @@ class PaymentController {
         throw new AppError('Payment not found for this pledge', 404, 'PAYMENT_NOT_FOUND');
       }
 
-      // Authorization check
-      if (req.user.role !== 'ADMIN') {
+      // Authorization check - allow anonymous users to view their own payments
+      // Only restrict if user is authenticated but trying to view someone else's payment
+      if (req.user && req.user.role !== 'ADMIN') {
         const pledge = await paymentService.getPledgeById(payment.pledge_id);
-        if (pledge.user_id !== req.user.userId) {
+        if (pledge.user_id && pledge.user_id !== req.user.userId) {
           throw new AppError('Not authorized to view this payment', 403, 'FORBIDDEN');
         }
       }

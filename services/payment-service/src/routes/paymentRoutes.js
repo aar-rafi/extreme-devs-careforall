@@ -16,7 +16,7 @@ router.post('/webhook/ipn', webhookController.handleIPN);
 
 // Payment queries
 router.get('/:id', requireAuth, paymentController.getPaymentById);
-router.get('/pledge/:pledgeId', requireAuth, paymentController.getPaymentByPledgeId);
+router.get('/pledge/:pledgeId', optionalAuth, paymentController.getPaymentByPledgeId);
 router.get('/transaction/:transactionId', requireAuth, paymentController.getPaymentByTransactionId);
 
 // Payment validation (verify with SSL Commerz)
