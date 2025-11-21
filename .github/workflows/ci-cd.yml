@@ -1,0 +1,227 @@
+name: CI/CD - CareForAll
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  detect-changed-services:
+    name: Detect changed services and frontends
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changed.outputs.services }}
+      frontends: ${{ steps.changed.outputs.frontends }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: changed
+        shell: bash
+        run: |
+          set -e
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Compare PR branch with base branch on origin
+            BASE_REF="${{ github.base_ref }}"
+            git fetch origin "$BASE_REF" --depth=1
+            RANGE="origin/${BASE_REF}...${{ github.sha }}"
+          else
+            # For direct pushes, compare with previous commit on the same branch
+            RANGE="HEAD~1...HEAD"
+          fi
+
+          echo "Using diff range: $RANGE"
+
+          CHANGED_FILES=$(git diff --name-only "$RANGE" || true)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Extract top-level service directory names under services/
+          SERVICES=$(echo "$CHANGED_FILES" | grep '^services/' | cut -d/ -f2 | sort -u || true)
+
+          if [ -z "$SERVICES" ]; then
+            echo "No specific service changes detected. Falling back to all services."
+            SERVICES=$(ls services)
+          fi
+
+          echo "Services to process:"
+          echo "$SERVICES"
+
+          # Build JSON array for matrix strategy, e.g. ["auth-service","api-gateway"]
+          SERVICES_JSON=$(printf '%s\n' "$SERVICES" | awk 'NF {gsub(/"/,"\\\""); printf "%s\"%s\"", sep, $1; sep=","} END {print ""}')
+
+          echo "services=[$SERVICES_JSON]" >> "$GITHUB_OUTPUT"
+
+          # Detect changed frontends (admin-dashboard, client)
+          FRONTENDS=""
+          for APP in admin-dashboard client; do
+            if echo "$CHANGED_FILES" | grep -q "^${APP}/"; then
+              FRONTENDS="${FRONTENDS}${APP}"
+            fi
+          done
+
+          if [ -z "$FRONTENDS" ]; then
+            echo "No frontend changes detected."
+            echo "frontends=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "Frontends to process:"
+            echo "$FRONTENDS"
+            FRONTENDS_JSON=$(printf '%s\n' "$FRONTENDS" | awk 'NF {gsub(/"/,"\\\""); printf "%s\"%s\"", sep, $1; sep=","} END {print ""}')
+            echo "frontends=[$FRONTENDS_JSON]" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Run tests for changed services
+    needs: detect-changed-services
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changed-services.outputs.services) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: npm install
+
+      - name: Run tests (if defined)
+        working-directory: services/${{ matrix.service }}
+        shell: bash
+        run: |
+          if npm run | grep -qE ' test($|:)'; then
+            npm test
+          else
+            echo "No test script defined for ${{ matrix.service }}, skipping tests."
+          fi
+
+  build-images:
+    name: Build versioned Docker images
+    needs:
+      - detect-changed-services
+      - test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changed-services.outputs.services) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image with semantic version tag
+        shell: bash
+        run: |
+          SERVICE="${{ matrix.service }}"
+          VERSION=$(node -p "require('./services/${SERVICE}/package.json').version")
+
+          if [ -z "$VERSION" ]; then
+            echo "Could not determine version for service ${SERVICE}"
+            exit 1
+          fi
+
+          # Image name pattern: careforall-<service>:<version>
+          IMAGE_NAME="careforall-${SERVICE}"
+          VERSION_TAG="${IMAGE_NAME}:v${VERSION}"
+          LATEST_TAG="${IMAGE_NAME}:latest"
+
+          echo "Building Docker image ${VERSION_TAG} (and ${LATEST_TAG})"
+
+          docker build \
+            -f "services/${SERVICE}/Dockerfile" \
+            -t "${VERSION_TAG}" \
+            -t "${LATEST_TAG}" \
+            .
+
+          echo "Built image tags:"
+          docker images "${IMAGE_NAME}"
+
+          # If you want to push to a registry (e.g., GHCR or Docker Hub),
+          # add a login step and docker push commands here.
+
+  deploy:
+    name: Deploy to OVH VM
+    needs:
+      - test
+      - build-images
+      - frontend-ci
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy on OVH VM via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            set -e
+            cd /opt/careforall   # <-- change this to the directory of your repo on the VM
+            git pull
+            docker compose up -d --build
+
+  frontend-ci:
+    name: Frontend checks (admin-dashboard, client)
+    needs: detect-changed-services
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.detect-changed-services.outputs.frontends) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.app }}
+        run: npm install
+
+      - name: Run lint (if defined)
+        working-directory: ${{ matrix.app }}
+        shell: bash
+        run: |
+          if npm run | grep -qE ' lint($|:)'; then
+            npm run lint
+          else
+            echo "No lint script defined for ${{ matrix.app }}, skipping lint."
+          fi
+
+      - name: Run build (if defined)
+        working-directory: ${{ matrix.app }}
+        shell: bash
+        run: |
+          if npm run | grep -qE ' build($|:)'; then
+            npm run build
+          else
+            echo "No build script defined for ${{ matrix.app }}, skipping build."
+          fi
+
+
