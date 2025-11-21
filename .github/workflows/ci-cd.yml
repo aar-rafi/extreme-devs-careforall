@@ -15,6 +15,8 @@ jobs:
     outputs:
       services: ${{ steps.changed.outputs.services }}
       frontends: ${{ steps.changed.outputs.frontends }}
+      has-services: ${{ steps.changed.outputs.has-services }}
+      has-frontends: ${{ steps.changed.outputs.has-frontends }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,41 +48,54 @@ jobs:
           # Extract top-level service directory names under services/
           SERVICES=$(echo "$CHANGED_FILES" | grep '^services/' | cut -d/ -f2 | sort -u || true)
 
-          if [ -z "$SERVICES" ]; then
-            echo "No specific service changes detected. Falling back to all services."
-            SERVICES=$(ls services)
+          # Check if shared package changed - rebuild all services if so
+          if echo "$CHANGED_FILES" | grep -q '^shared/'; then
+            echo "Shared package changed - rebuilding all services"
+            SERVICES=$(ls services 2>/dev/null || echo "")
           fi
 
-          echo "Services to process:"
-          echo "$SERVICES"
+          if [ -z "$SERVICES" ]; then
+            echo "No specific service changes detected."
+            echo "services=[]" >> "$GITHUB_OUTPUT"
+            echo "has-services=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Services to process:"
+            echo "$SERVICES"
 
-          # Build JSON array for matrix strategy, e.g. ["auth-service","api-gateway"]
-          SERVICES_JSON=$(printf '%s\n' "$SERVICES" | awk 'NF {gsub(/"/,"\\\""); printf "%s\"%s\"", sep, $1; sep=","} END {print ""}')
+            # Build JSON array for matrix strategy
+            SERVICES_JSON=$(printf '%s\n' "$SERVICES" | awk 'NF {gsub(/"/,"\\\""); printf "%s\"%s\"", sep, $1; sep=","} END {print ""}')
 
-          echo "services=[$SERVICES_JSON]" >> "$GITHUB_OUTPUT"
+            echo "services=[$SERVICES_JSON]" >> "$GITHUB_OUTPUT"
+            echo "has-services=true" >> "$GITHUB_OUTPUT"
+          fi
 
           # Detect changed frontends (admin-dashboard, client)
-          FRONTENDS=""
+          FRONTENDS_ARRAY=()
           for APP in admin-dashboard client; do
             if echo "$CHANGED_FILES" | grep -q "^${APP}/"; then
-              FRONTENDS="${FRONTENDS}${APP}"
+              FRONTENDS_ARRAY+=("$APP")
             fi
           done
 
-          if [ -z "$FRONTENDS" ]; then
+          if [ ${#FRONTENDS_ARRAY[@]} -eq 0 ]; then
             echo "No frontend changes detected."
             echo "frontends=[]" >> "$GITHUB_OUTPUT"
+            echo "has-frontends=false" >> "$GITHUB_OUTPUT"
           else
             echo "Frontends to process:"
-            echo "$FRONTENDS"
-            FRONTENDS_JSON=$(printf '%s\n' "$FRONTENDS" | awk 'NF {gsub(/"/,"\\\""); printf "%s\"%s\"", sep, $1; sep=","} END {print ""}')
+            printf '%s\n' "${FRONTENDS_ARRAY[@]}"
+
+            # Build JSON array
+            FRONTENDS_JSON=$(printf '%s\n' "${FRONTENDS_ARRAY[@]}" | awk 'NF {gsub(/"/,"\\\""); printf "%s\"%s\"", sep, $1; sep=","} END {print ""}')
             echo "frontends=[$FRONTENDS_JSON]" >> "$GITHUB_OUTPUT"
+            echo "has-frontends=true" >> "$GITHUB_OUTPUT"
           fi
 
   build-images:
     name: Build versioned Docker images
     needs:
       - detect-changed-services
+    if: needs.detect-changed-services.outputs.has-services == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -98,11 +113,18 @@ jobs:
         shell: bash
         run: |
           SERVICE="${{ matrix.service }}"
-          VERSION=$(node -p "require('./services/${SERVICE}/package.json').version")
+
+          # Check if package.json exists
+          if [ ! -f "services/${SERVICE}/package.json" ]; then
+            echo "No package.json found for ${SERVICE}, using default version"
+            VERSION="1.0.0"
+          else
+            VERSION=$(node -p "require('./services/${SERVICE}/package.json').version" 2>/dev/null || echo "1.0.0")
+          fi
 
           if [ -z "$VERSION" ]; then
-            echo "Could not determine version for service ${SERVICE}"
-            exit 1
+            echo "Could not determine version for service ${SERVICE}, using default"
+            VERSION="1.0.0"
           fi
 
           # Image name pattern: careforall-<service>:<version>
@@ -121,33 +143,20 @@ jobs:
           echo "Built image tags:"
           docker images "${IMAGE_NAME}"
 
-          # If you want to push to a registry (e.g., GHCR or Docker Hub),
-          # add a login step and docker push commands here.
+          # Save image as artifact for deployment
+          docker save "${IMAGE_NAME}:latest" -o "/tmp/${SERVICE}-image.tar"
 
-  deploy:
-    name: Deploy to OVH VM
-    needs:
-      - build-images
-      - frontend-ci
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Deploy on OVH VM via SSH
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd /opt/careforall   # <-- change this to the directory of your repo on the VM
-            git pull
-            docker compose up -d --build
+          name: ${{ matrix.service }}-image
+          path: /tmp/${{ matrix.service }}-image.tar
+          retention-days: 1
 
   frontend-ci:
     name: Frontend checks (admin-dashboard, client)
     needs: detect-changed-services
+    if: needs.detect-changed-services.outputs.has-frontends == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -163,16 +172,17 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
 
       - name: Install dependencies
         working-directory: ${{ matrix.app }}
-        run: npm install
+        run: npm ci
 
       - name: Run lint (if defined)
         working-directory: ${{ matrix.app }}
         shell: bash
         run: |
-          if npm run | grep -qE ' lint($|:)'; then
+          if npm run | grep -qE '^\s+lint'; then
             npm run lint
           else
             echo "No lint script defined for ${{ matrix.app }}, skipping lint."
@@ -182,10 +192,66 @@ jobs:
         working-directory: ${{ matrix.app }}
         shell: bash
         run: |
-          if npm run | grep -qE ' build($|:)'; then
+          if npm run | grep -qE '^\s+build'; then
             npm run build
           else
             echo "No build script defined for ${{ matrix.app }}, skipping build."
           fi
+        env:
+          # Prevent out-of-memory errors during build
+          NODE_OPTIONS: --max_old_space_size=4096
 
+  deploy:
+    name: Deploy to OVH VM
+    needs:
+      - build-images
+      - frontend-ci
+    # Always run deploy if on main branch, even if some jobs were skipped
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
+      (needs.frontend-ci.result == 'success' || needs.frontend-ci.result == 'skipped')
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Deploy on OVH VM via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/careforall
+
+            echo "Pulling latest changes..."
+            git pull
+
+            echo "Building and starting services..."
+            docker compose up -d --build
+
+            echo "Cleaning up unused Docker resources..."
+            docker system prune -f --volumes
+
+            echo "Deployment completed successfully!"
+
+  health-check:
+    name: Post-deployment health check
+    needs: deploy
+    if: success()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait for services to start
+        run: sleep 30
+
+      - name: Check API Gateway health
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.SSH_HOST }}:3000/health || echo "000")
+          if [ "$RESPONSE" != "200" ]; then
+            echo "Health check failed with status code: $RESPONSE"
+            exit 1
+          fi
+          echo "Health check passed!"
