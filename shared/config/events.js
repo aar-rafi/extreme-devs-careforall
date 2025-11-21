@@ -8,6 +8,7 @@ const EVENTS = {
   PLEDGE_COMPLETED: 'pledge.completed',
   PLEDGE_FAILED: 'pledge.failed',
   PLEDGE_REFUNDED: 'pledge.refunded',
+  PLEDGE_CANCELLED: 'pledge.cancelled',
 
   // Payment events
   PAYMENT_PENDING: 'payment.pending',
