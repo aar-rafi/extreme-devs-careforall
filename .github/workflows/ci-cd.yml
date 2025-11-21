@@ -224,18 +224,65 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            cd /opt/careforall
 
-            echo "Pulling latest changes..."
-            git pull
+            # Define installation directory
+            DEPLOY_DIR="/opt/careforall"
+            REPO_URL="${{ secrets.REPO_URL || 'https://github.com/${{ github.repository }}.git' }}"
+
+            # Check if directory exists
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              echo "Repository not found. Cloning for the first time..."
+              sudo mkdir -p /opt
+              cd /opt
+              sudo git clone "$REPO_URL" careforall
+              sudo chown -R $USER:$USER "$DEPLOY_DIR"
+              cd "$DEPLOY_DIR"
+
+              echo "Setting up environment file..."
+              if [ ! -f .env ]; then
+                echo "WARNING: .env file not found. Please create it manually."
+                echo "You can copy .env.example if it exists."
+              fi
+            else
+              echo "Repository exists. Pulling latest changes..."
+              cd "$DEPLOY_DIR"
+              git pull
+            fi
+
+            echo "Current directory: $(pwd)"
+            echo "Git branch: $(git branch --show-current)"
+
+            # Check if Docker is installed
+            if ! command -v docker &> /dev/null; then
+              echo "ERROR: Docker is not installed!"
+              echo "Please install Docker first: https://docs.docker.com/engine/install/"
+              exit 1
+            fi
+
+            # Check if Docker Compose is available
+            if ! docker compose version &> /dev/null; then
+              echo "ERROR: Docker Compose plugin is not installed!"
+              echo "Please install Docker Compose: https://docs.docker.com/compose/install/"
+              exit 1
+            fi
 
             echo "Building and starting services..."
             docker compose up -d --build
 
+            echo "Waiting for services to start..."
+            sleep 10
+
+            echo "Checking running containers..."
+            docker compose ps
+
             echo "Cleaning up unused Docker resources..."
-            docker system prune -f --volumes
+            docker system prune -f
 
             echo "Deployment completed successfully!"
+            echo "Services are running at:"
+            echo "  - Client: http://$(hostname -I | awk '{print $1}'):4000"
+            echo "  - Admin: http://$(hostname -I | awk '{print $1}'):4001"
+            echo "  - API Gateway: http://$(hostname -I | awk '{print $1}'):3000"
 
   health-check:
     name: Post-deployment health check
