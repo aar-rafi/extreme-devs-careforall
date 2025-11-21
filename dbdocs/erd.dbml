@@ -70,7 +70,7 @@ Enum system_notification_severity_enum {
 // auth schema
 ////////////////////////////////////////////////////
 
-Table auth_users {
+Table auth.users {
   id uuid [pk, default: `gen_random_uuid()`]
   email varchar(255) [not null, unique]
   password_hash varchar(255) [not null]
@@ -83,9 +83,9 @@ Table auth_users {
   note: 'Authentication users'
 }
 
-Table auth_user_profiles {
+Table auth.user_profiles {
   id uuid [pk, default: `gen_random_uuid()`]
-  user_id uuid [not null, ref: > auth_users.id]
+  user_id uuid [not null, ref: > auth.users.id]
   first_name varchar(100)
   last_name varchar(100)
   phone varchar(20)
@@ -101,9 +101,9 @@ Table auth_user_profiles {
   note: 'Additional user profile information'
 }
 
-Table auth_refresh_tokens {
+Table auth.refresh_tokens {
   id uuid [pk, default: `gen_random_uuid()`]
-  user_id uuid [not null, ref: > auth_users.id]
+  user_id uuid [not null, ref: > auth.users.id]
   token varchar(500) [not null, unique]
   expires_at timestamp [not null]
   created_at timestamp [not null, default: `now()`]
@@ -115,7 +115,7 @@ Table auth_refresh_tokens {
 // campaigns schema
 ////////////////////////////////////////////////////
 
-Table campaigns_campaigns {
+Table campaigns.campaigns {
   id uuid [pk, default: `gen_random_uuid()`]
   title varchar(255) [not null]
   description text [not null]
@@ -140,10 +140,10 @@ Table campaigns_campaigns {
 // pledges schema
 ////////////////////////////////////////////////////
 
-Table pledges_pledges {
+Table pledges.pledges {
   id uuid [pk, default: `gen_random_uuid()`]
-  campaign_id uuid [not null] // campaigns_campaigns.id
-  user_id uuid // auth_users.id, nullable for anonymous
+  campaign_id uuid [not null] // campaigns.campaigns.id
+  user_id uuid // auth.users.id, nullable for anonymous
   donor_email varchar(255) [not null]
   donor_name varchar(255)
   amount decimal(15, 2) [not null]
@@ -159,7 +159,7 @@ Table pledges_pledges {
   note: 'Donation pledges (before payment)'
 }
 
-Table pledges_outbox {
+Table pledges.outbox {
   id uuid [pk, default: `gen_random_uuid()`]
   aggregate_id uuid [not null]
   aggregate_type varchar(50) [not null]
@@ -178,9 +178,9 @@ Table pledges_outbox {
 // payments schema
 ////////////////////////////////////////////////////
 
-Table payments_payments {
+Table payments.payments {
   id uuid [pk, default: `gen_random_uuid()`]
-  pledge_id uuid [not null, unique] // pledges_pledges.id
+  pledge_id uuid [not null, unique] // pledges.pledges.id
   transaction_id varchar(255)
   payment_method varchar(50)
   amount decimal(15, 2) [not null]
@@ -196,7 +196,7 @@ Table payments_payments {
   note: 'Payment records for pledges'
 }
 
-Table payments_idempotency_keys {
+Table payments.idempotency_keys {
   id uuid [pk, default: `gen_random_uuid()`]
   idempotency_key varchar(255) [not null, unique]
   request_hash varchar(255) [not null]
@@ -208,7 +208,7 @@ Table payments_idempotency_keys {
   note: 'Idempotency keys for payment API'
 }
 
-Table payments_webhook_logs {
+Table payments.webhook_logs {
   id uuid [pk, default: `gen_random_uuid()`]
   webhook_id varchar(255) [not null, unique]
   event_type varchar(100) [not null]
@@ -221,9 +221,9 @@ Table payments_webhook_logs {
   note: 'SSLCommerz webhook tracking'
 }
 
-Table payments_payment_state_history {
+Table payments.payment_state_history {
   id uuid [pk, default: `gen_random_uuid()`]
-  payment_id uuid [not null, ref: > payments_payments.id]
+  payment_id uuid [not null, ref: > payments.payments.id]
   from_status varchar(20)
   to_status varchar(20) [not null]
   reason text
@@ -236,8 +236,8 @@ Table payments_payment_state_history {
 // query schema (read models)
 ////////////////////////////////////////////////////
 
-Table query_campaign_totals {
-  campaign_id uuid [pk] // campaigns_campaigns.id
+Table query.campaign_totals {
+  campaign_id uuid [pk] // campaigns.campaigns.id
   title varchar(255)
   campaign_type campaign_type_enum
   goal_amount decimal(15, 2)
@@ -251,12 +251,12 @@ Table query_campaign_totals {
   note: 'Aggregated metrics per campaign'
 }
 
-Table query_donation_history {
+Table query.donation_history {
   id uuid [pk, default: `gen_random_uuid()`]
-  pledge_id uuid [not null] // pledges_pledges.id
-  campaign_id uuid [not null] // campaigns_campaigns.id
+  pledge_id uuid [not null] // pledges.pledges.id
+  campaign_id uuid [not null] // campaigns.campaigns.id
   campaign_title varchar(255)
-  donor_id uuid // auth_users.id
+  donor_id uuid // auth.users.id
   donor_name varchar(255)
   donor_email varchar(255)
   amount decimal(15, 2) [not null]
@@ -268,8 +268,8 @@ Table query_donation_history {
   note: 'Donation history for UI queries'
 }
 
-Table query_user_statistics {
-  user_id uuid [pk] // auth_users.id
+Table query.user_statistics {
+  user_id uuid [pk] // auth.users.id
   total_donated decimal(15, 2) [not null, default: 0]
   donation_count int [not null, default: 0]
   campaigns_supported int [not null, default: 0]
@@ -280,7 +280,7 @@ Table query_user_statistics {
   note: 'Cached aggregates per user'
 }
 
-Table query_platform_statistics {
+Table query.platform_statistics {
   id int [pk, default: 1]
   total_raised decimal(15, 2) [not null, default: 0]
   total_campaigns int [not null, default: 0]
@@ -296,9 +296,9 @@ Table query_platform_statistics {
 // admin schema
 ////////////////////////////////////////////////////
 
-Table admin_audit_logs {
+Table admin.audit_logs {
   id uuid [pk, default: `gen_random_uuid()`]
-  admin_id uuid [not null] // auth_users.id
+  admin_id uuid [not null] // auth.users.id
   action varchar(100) [not null]
   entity_type varchar(50)
   entity_id uuid
@@ -310,7 +310,7 @@ Table admin_audit_logs {
   note: 'Admin action audit logs'
 }
 
-Table admin_system_notifications {
+Table admin.system_notifications {
   id uuid [pk, default: `gen_random_uuid()`]
   type varchar(50) [not null]
   title varchar(255) [not null]
@@ -327,14 +327,14 @@ Table admin_system_notifications {
 // notifications schema
 ////////////////////////////////////////////////////
 
-Table notifications_notification_history {
+Table notifications.notification_history {
   id uuid [pk, default: `gen_random_uuid()`]
   notification_type notification_type_enum [not null]
   event_type varchar(100) [not null]
   event_id varchar(255)
   recipient_email varchar(255)
   recipient_phone varchar(20)
-  recipient_user_id uuid // auth_users.id
+  recipient_user_id uuid // auth.users.id
   subject varchar(255)
   template_name varchar(100)
   template_data jsonb
@@ -347,9 +347,9 @@ Table notifications_notification_history {
   note: 'History of sent notifications'
 }
 
-Table notifications_push_subscriptions {
+Table notifications.push_subscriptions {
   id uuid [pk, default: `gen_random_uuid()`]
-  user_id uuid [not null] // auth_users.id
+  user_id uuid [not null] // auth.users.id
   endpoint text [not null, unique]
   p256dh text [not null]
   auth text [not null]
@@ -360,36 +360,3 @@ Table notifications_push_subscriptions {
 
   note: 'Web push subscriptions'
 }
-
-////////////////////////////////////////////////////
-// Relationships
-////////////////////////////////////////////////////
-
-// auth
-Ref: auth_user_profiles.user_id > auth_users.id
-Ref: auth_refresh_tokens.user_id > auth_users.id
-
-// campaigns
-Ref: campaigns_campaigns.organizer_id > auth_users.id
-
-// pledges
-Ref: pledges_pledges.campaign_id > campaigns_campaigns.id
-Ref: pledges_pledges.user_id > auth_users.id
-
-// payments
-Ref: payments_payments.pledge_id > pledges_pledges.id
-Ref: payments_payment_state_history.payment_id > payments_payments.id
-
-// query
-Ref: query_campaign_totals.campaign_id > campaigns_campaigns.id
-Ref: query_donation_history.pledge_id > pledges_pledges.id
-Ref: query_donation_history.campaign_id > campaigns_campaigns.id
-Ref: query_donation_history.donor_id > auth_users.id
-Ref: query_user_statistics.user_id > auth_users.id
-
-// admin
-Ref: admin_audit_logs.admin_id > auth_users.id
-
-// notifications
-Ref: notifications_notification_history.recipient_user_id > auth_users.id
-Ref: notifications_push_subscriptions.user_id > auth_users.id
