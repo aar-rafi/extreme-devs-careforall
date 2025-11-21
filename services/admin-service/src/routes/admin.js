@@ -102,6 +102,37 @@ router.get('/campaigns/:id', async (req, res) => {
 });
 
 /**
+ * PATCH /api/admin/campaigns/:id/status
+ * Update campaign status (generic endpoint)
+ */
+router.patch('/campaigns/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const adminId = req.user.userId;
+    const ipAddress = req.ip;
+    const userAgent = req.headers['user-agent'];
+
+    const result = await campaignAdminService.updateCampaignStatus(
+      id,
+      status,
+      adminId,
+      ipAddress,
+      userAgent
+    );
+    res.json(result);
+  } catch (error) {
+    logger.error('Failed to update campaign status', { error: error.message });
+    res.status(error.message.includes('not found') ? 404 : 400).json({ error: error.message });
+  }
+});
+
+/**
  * PATCH /api/admin/campaigns/:id/approve
  * Approve a campaign
  */

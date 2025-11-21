@@ -94,6 +94,73 @@ class CampaignAdminService {
   }
 
   /**
+   * Update campaign status (generic method)
+   * @param {string} campaignId - Campaign ID
+   * @param {string} newStatus - New status (draft, active, completed, cancelled)
+   * @param {string} adminId - Admin user ID
+   * @param {string} ipAddress - Admin IP address
+   * @param {string} userAgent - Admin user agent
+   */
+  async updateCampaignStatus(campaignId, newStatus, adminId, ipAddress, userAgent) {
+    const pool = getPool();
+
+    try {
+      // Validate status
+      const validStatuses = ['draft', 'active', 'completed', 'cancelled'];
+      if (!validStatuses.includes(newStatus)) {
+        throw new Error(`Invalid status: ${newStatus}. Must be one of: ${validStatuses.join(', ')}`);
+      }
+
+      // Get current campaign status
+      const campaign = await pool.query(
+        'SELECT * FROM campaigns.campaigns WHERE id = $1',
+        [campaignId]
+      );
+
+      if (campaign.rows.length === 0) {
+        throw new Error('Campaign not found');
+      }
+
+      const currentStatus = campaign.rows[0].status;
+
+      // Don't update if status is the same
+      if (currentStatus === newStatus) {
+        return { success: true, message: 'Campaign status unchanged' };
+      }
+
+      // Update campaign status
+      await pool.query(
+        `UPDATE campaigns.campaigns
+         SET status = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [newStatus, campaignId]
+      );
+
+      // Log the action
+      await auditService.logAction(
+        adminId,
+        'update_campaign_status',
+        'campaign',
+        campaignId,
+        { previousStatus: currentStatus, newStatus },
+        ipAddress,
+        userAgent
+      );
+
+      logger.info('Campaign status updated', { campaignId, adminId, currentStatus, newStatus });
+
+      return { success: true, message: 'Campaign status updated successfully' };
+    } catch (error) {
+      logger.error('Failed to update campaign status', {
+        error: error.message,
+        campaignId,
+        adminId,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Approve a campaign (change status from draft to active)
    * @param {string} campaignId - Campaign ID
    * @param {string} adminId - Admin user ID
