@@ -42,10 +42,7 @@ export default function LoginPage() {
       const response = await authApi.login(data);
       if (response.success) {
         setAuth(response.data.user, response.data.accessToken, response.data.refreshToken);
-        // Small delay to ensure Zustand state propagates before navigation
-        setTimeout(() => {
-          router.push('/');
-        }, 100);
+        router.push('/');
       }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed. Please try again.');

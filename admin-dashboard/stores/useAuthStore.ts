@@ -6,7 +6,7 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
+  isHydrated: boolean;
 
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   setUser: (user: User) => void;
@@ -19,7 +19,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
-  isLoading: true,
+  isHydrated: false,
 
   setAuth: (user, accessToken, refreshToken) => {
     if (typeof window !== 'undefined') {
@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
     }
-    set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
+    set({ user, accessToken, refreshToken, isAuthenticated: true, isHydrated: true });
   },
 
   setUser: (user) => {
@@ -55,15 +55,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (accessToken && refreshToken && userStr) {
         try {
           const user = JSON.parse(userStr);
-          set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
+          set({ user, accessToken, refreshToken, isAuthenticated: true, isHydrated: true });
         } catch {
-          set({ isLoading: false });
+          set({ isHydrated: true });
         }
       } else {
-        set({ isLoading: false });
+        set({ isHydrated: true });
       }
     } else {
-      set({ isLoading: false });
+      set({ isHydrated: true });
     }
   },
 }));

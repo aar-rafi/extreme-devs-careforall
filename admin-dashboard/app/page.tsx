@@ -11,11 +11,11 @@ import { adminApi } from '@/lib/api/admin';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user, isAuthenticated, logout, isLoading: isAuthLoading } = useAuthStore();
+  const { user, isAuthenticated, logout, isHydrated } = useAuthStore();
 
   useEffect(() => {
-    // Don't redirect while still loading auth state
-    if (isAuthLoading) return;
+    // Don't redirect until auth state is hydrated from localStorage
+    if (!isHydrated) return;
 
     if (!isAuthenticated) {
       router.push('/login');
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
       alert('Access denied. Admin access required.');
       router.push('/login');
     }
-  }, [isAuthenticated, user, router, isAuthLoading]);
+  }, [isAuthenticated, user, router, isHydrated]);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-stats'],
@@ -38,8 +38,8 @@ export default function AdminDashboard() {
     router.push('/login');
   };
 
-  // Show loading while auth is being initialized
-  if (isAuthLoading) {
+  // Show loading while auth is being hydrated from localStorage
+  if (!isHydrated) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-lg">Loading...</div>

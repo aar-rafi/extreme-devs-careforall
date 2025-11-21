@@ -14,17 +14,17 @@ import { formatDistanceToNow } from 'date-fns';
 export default function AdminCampaignsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    // Don't redirect while still loading auth state
-    if (isAuthLoading) return;
+    // Don't redirect until auth state is hydrated from localStorage
+    if (!isHydrated) return;
 
     if (!isAuthenticated || user?.role !== 'ADMIN') {
       router.push('/login');
     }
-  }, [isAuthenticated, user, router, isAuthLoading]);
+  }, [isAuthenticated, user, router, isHydrated]);
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['admin-campaigns', filter],
@@ -44,8 +44,8 @@ export default function AdminCampaignsPage() {
     },
   });
 
-  // Show loading while auth is being initialized
-  if (isAuthLoading) {
+  // Show loading while auth is being hydrated from localStorage
+  if (!isHydrated) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-lg">Loading...</div>

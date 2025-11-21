@@ -1,7 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const queryClient = new QueryClient({
@@ -15,14 +15,18 @@ const queryClient = new QueryClient({
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((state) => state.initialize);
-  const [initialized, setInitialized] = useState(false);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    initialize();
-    setInitialized(true);
+    // Only initialize once across the entire app lifecycle
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      initialize();
+    }
   }, [initialize]);
 
-  if (!initialized) {
+  if (!isHydrated) {
     return <div className="flex h-screen items-center justify-center"><div className="text-lg">Loading...</div></div>;
   }
 

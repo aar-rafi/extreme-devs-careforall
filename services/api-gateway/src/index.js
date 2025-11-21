@@ -17,9 +17,11 @@ app.use(cors());
 // Rate limiting - Development-friendly settings
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute window
-  max: 1000, // 1000 requests per minute (very generous for development)
+  max: 10000, // 10000 requests per minute (extremely generous for development)
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all requests
+  skipFailedRequests: false,
 });
 app.use(limiter);
 
