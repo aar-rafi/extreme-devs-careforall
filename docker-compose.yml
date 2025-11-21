@@ -396,6 +396,22 @@ services:
     networks:
       - careforall-network
 
+  # Load Tester (generates traffic against API Gateway and exposes Prometheus metrics)
+  load-tester:
+    build:
+      context: .
+      dockerfile: services/load-tester/Dockerfile
+    container_name: careforall-load-tester
+    environment:
+      - TARGET_URL=http://api-gateway:3000/api/campaigns
+      - TARGET_RPS=${LOAD_TEST_RPS:-1000}
+      - DURATION_SECONDS=${LOAD_TEST_DURATION:-60}
+      - METRICS_PORT=9101
+    depends_on:
+      - api-gateway
+    networks:
+      - careforall-network
+
 # ============================================================================
 # Volumes
 # ============================================================================

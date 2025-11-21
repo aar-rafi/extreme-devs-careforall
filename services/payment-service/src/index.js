@@ -10,6 +10,7 @@ const {
   metricsEndpoint
 } = require('@careforall/shared');
 const paymentRoutes = require('./routes/paymentRoutes');
+const { startPaymentConsumer } = require('./consumers/paymentConsumer');
 
 const app = express();
 const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;
@@ -32,6 +33,14 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`Payment Service running on port ${PORT}`);
+
+  // Start payment event consumer
+  try {
+    startPaymentConsumer();
+    logger.info('Payment event consumer started successfully');
+  } catch (error) {
+    logger.error('Failed to start payment consumer', { error: error.message });
+  }
 });
 
 process.on('SIGTERM', () => {

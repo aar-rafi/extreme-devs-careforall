@@ -1,0 +1,74 @@
+{
+  "id": null,
+  "uid": "careforall-load-test",
+  "title": "CareForAll - Load Test",
+  "tags": ["careforall", "load-test"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Load Tester RPS (all statuses)",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(load_tester_requests_total[5s]))",
+          "legendFormat": "total rps",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Load Tester Errors per Second",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(load_tester_requests_total{status!=\"ok\"}[5s]))",
+          "legendFormat": "errors rps",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Load Tester p95 Latency",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(load_tester_request_duration_seconds_bucket[5s])) by (le))",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m"]
+  }
+}
+
+

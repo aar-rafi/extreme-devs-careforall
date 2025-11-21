@@ -37,10 +37,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limiting
+// Metrics middleware for API Gateway
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    httpRequestDuration.labels(req.method, req.path, res.statusCode).observe(duration);
+  });
+  next();
+});
+
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 1000, // 1000 requests per minute (very generous for development)
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
