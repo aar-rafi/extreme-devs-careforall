@@ -6,21 +6,21 @@ WORKDIR /app
 COPY shared ./shared
 
 # Copy service package files and update shared path
-COPY services/auth-service/package*.json ./
+COPY services/pledge-service/package*.json ./
 RUN sed -i 's|file:../../shared|file:./shared|g' package.json
 
 # Install dependencies
 RUN npm install --production
 
 # Copy service source code
-COPY services/auth-service/src ./src
+COPY services/pledge-service/src ./src
 
 # Expose port
-EXPOSE 3001
+EXPOSE 3003
 
 # Set environment
 ENV NODE_ENV=production
-ENV auth-service=auth-service
+ENV pledge-service=pledge-service
 
 # Start service
 CMD ["node", "src/index.js"]

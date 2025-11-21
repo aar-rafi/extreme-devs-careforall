@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================================================
   # Infrastructure Services
@@ -50,8 +48,8 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./services/api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
     container_name: careforall-api-gateway
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -80,8 +78,8 @@ services:
   # Auth Service
   auth-service:
     build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/auth-service/Dockerfile
     container_name: careforall-auth-service
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -102,9 +100,8 @@ services:
   # Campaign Service
   campaign-service:
     build:
-      context: ./services/campaign-service
-      dockerfile: Dockerfile
-    container_name: careforall-campaign-service
+      context: .
+      dockerfile: services/campaign-service/Dockerfile
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
@@ -123,8 +120,8 @@ services:
   # Pledge Service
   pledge-service:
     build:
-      context: ./services/pledge-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/pledge-service/Dockerfile
     container_name: careforall-pledge-service
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -142,8 +139,8 @@ services:
   # Payment Service
   payment-service:
     build:
-      context: ./services/payment-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/payment-service/Dockerfile
     container_name: careforall-payment-service
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -164,9 +161,8 @@ services:
   # Query Service (CQRS Read Model)
   query-service:
     build:
-      context: ./services/query-service
-      dockerfile: Dockerfile
-    container_name: careforall-query-service
+      context: .
+      dockerfile: services/query-service/Dockerfile
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-careforall}
@@ -185,8 +181,8 @@ services:
   # Admin Service
   admin-service:
     build:
-      context: ./services/admin-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/admin-service/Dockerfile
     container_name: careforall-admin-service
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -204,8 +200,8 @@ services:
   # Notification Service
   notification-service:
     build:
-      context: ./services/notification-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     container_name: careforall-notification-service
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -230,8 +226,8 @@ services:
   # Bull Board (Queue Monitoring)
   bull-board:
     build:
-      context: ./services/bull-board
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/bull-board/Dockerfile
     container_name: careforall-bull-board
     environment:
       - REDIS_URL=redis://redis:6379
