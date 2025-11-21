@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Donation Received</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .notification-icon {
+      font-size: 60px;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 40px 30px;
+      line-height: 1.6;
+      color: #333;
+    }
+    .donation-card {
+      background-color: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 25px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .donation-card .amount {
+      font-size: 32px;
+      font-weight: bold;
+      color: #667eea;
+      margin: 10px 0;
+    }
+    .donation-card .donor {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .donation-card .campaign {
+      font-size: 16px;
+      color: #666;
+    }
+    .message-box {
+      background-color: #fff9e6;
+      border: 1px solid #ffe066;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .message-box h4 {
+      margin-top: 0;
+      color: #997a00;
+    }
+    .message-box p {
+      margin-bottom: 0;
+      color: #666;
+      font-style: italic;
+    }
+    .cta-button {
+      display: inline-block;
+      padding: 14px 32px;
+      background-color: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 20px 0;
+      font-weight: 600;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 20px 30px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="notification-icon">💝</div>
+      <h1>New Donation Received!</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{organizerName}},</p>
+      <p>Great news! Your campaign just received a new donation!</p>
+
+      <div class="donation-card">
+        <div class="donor">From: {{donorName}}</div>
+        <div class="amount">{{currency}} {{amount}}</div>
+        <div class="campaign">For: {{campaignTitle}}</div>
+      </div>
+
+      {{#if message}}
+      <div class="message-box">
+        <h4>Donor Message:</h4>
+        <p>"{{message}}"</p>
+      </div>
+      {{/if}}
+
+      <p>Every donation brings you one step closer to your goal and makes a real impact on the cause you're championing.</p>
+
+      <p><strong>What you can do:</strong></p>
+      <ul>
+        <li>View the donation details in your campaign dashboard</li>
+        <li>Send a personalized thank you message to the donor</li>
+        <li>Share campaign updates to keep momentum going</li>
+        <li>Celebrate this milestone with your supporters</li>
+      </ul>
+
+      <center>
+        <a href="{{platformUrl}}/dashboard/campaigns" class="cta-button">View Dashboard</a>
+      </center>
+
+      <p>Thank you for using our platform to make a difference. Keep up the amazing work!</p>
+    </div>
+    <div class="footer">
+      <p>&copy; 2024 CareForAll. All rights reserved.</p>
+      <p>Together, we're creating positive change!</p>
+    </div>
+  </div>
+</body>
+</html>

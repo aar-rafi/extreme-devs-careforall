@@ -1,29 +1,65 @@
 const { Queue, Worker } = require('bullmq');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('./logger');
+const { EVENTS, QUEUES } = require('../config/events');
 
-const connection = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-};
+// Parse Redis connection from REDIS_URL or individual env vars
+function getRedisConnection() {
+  if (process.env.REDIS_URL) {
+    const url = new URL(process.env.REDIS_URL);
+    return {
+      host: url.hostname,
+      port: parseInt(url.port || '6379'),
+    };
+  }
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+  };
+}
+
+const connection = getRedisConnection();
+
+// Queue instances cache
+const queues = {};
 
 /**
- * Create a BullMQ queue
+ * Get or create a queue instance
  * @param {string} queueName Queue name
  * @returns {Queue} BullMQ queue instance
  */
-function createQueue(queueName) {
-  return new Queue(queueName, { connection });
+function getQueue(queueName) {
+  if (!queues[queueName]) {
+    queues[queueName] = new Queue(queueName, { connection });
+  }
+  return queues[queueName];
 }
 
 /**
- * Publish an event to a queue
- * @param {Queue} queue Queue instance
- * @param {string} eventType Event type
+ * Map event types to their corresponding queues
+ */
+function getQueueForEvent(eventType) {
+  if (eventType.startsWith('pledge.')) return QUEUES.PLEDGE_EVENTS;
+  if (eventType.startsWith('payment.')) return QUEUES.PAYMENT_EVENTS;
+  if (eventType.startsWith('campaign.')) return QUEUES.CAMPAIGN_EVENTS;
+  if (eventType.startsWith('notification.')) return QUEUES.NOTIFICATION_EVENTS;
+  return QUEUES.QUERY_UPDATES; // Default queue
+}
+
+/**
+ * Publish an event
+ * @param {string} eventType Event type (e.g., EVENTS.PLEDGE_CREATED)
  * @param {Object} data Event data
  * @param {Object} options Job options
  */
-async function publishEvent(queue, eventType, data, options = {}) {
+async function publishEvent(eventType, data, options = {}) {
+  if (!eventType) {
+    throw new Error('Event type must be provided');
+  }
+
+  const queueName = getQueueForEvent(eventType);
+  const queue = getQueue(queueName);
+
   const eventId = uuidv4();
   const payload = {
     eventId,
@@ -38,18 +74,22 @@ async function publishEvent(queue, eventType, data, options = {}) {
     ...options,
   });
 
-  logger.info('Event published', { eventType, eventId, queue: queue.name });
+  logger.info('Event published', { eventType, eventId, queue: queueName });
   return eventId;
 }
 
 /**
- * Create an event consumer (worker)
+ * Create an event consumer (worker) for a specific queue
  * @param {string} queueName Queue name
- * @param {Function} processor Job processor function
+ * @param {Function} processor Job processor function (receives job.data.eventType and job.data.data)
  * @param {Object} options Worker options
  * @returns {Worker} BullMQ worker instance
  */
 function createConsumer(queueName, processor, options = {}) {
+  if (!queueName) {
+    throw new Error('Queue name must be provided');
+  }
+
   const worker = new Worker(
     queueName,
     async (job) => {
@@ -95,8 +135,18 @@ function createConsumer(queueName, processor, options = {}) {
   return worker;
 }
 
+/**
+ * Create a BullMQ queue (for backward compatibility)
+ * @param {string} queueName Queue name
+ * @returns {Queue} BullMQ queue instance
+ */
+function createQueue(queueName) {
+  return getQueue(queueName);
+}
+
 module.exports = {
   createQueue,
+  getQueue,
   publishEvent,
   createConsumer,
 };

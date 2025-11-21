@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donation Successful</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .success-icon {
+      font-size: 60px;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 40px 30px;
+      line-height: 1.6;
+      color: #333;
+    }
+    .donation-box {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      padding: 30px;
+      margin: 20px 0;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .donation-box .amount {
+      font-size: 42px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .donation-box .campaign {
+      font-size: 18px;
+      margin-top: 10px;
+      opacity: 0.95;
+    }
+    .info-section {
+      background-color: #f8f9fa;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .impact-box {
+      border: 2px solid #f5576c;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .impact-box h3 {
+      color: #f5576c;
+      margin-top: 0;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 20px 30px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="success-icon">✓</div>
+      <h1>Donation Successful!</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{donorName}},</p>
+      <p><strong>Thank you for your incredible generosity!</strong> Your donation has been successfully processed.</p>
+
+      <div class="donation-box">
+        <div class="amount">{{currency}} {{amount}}</div>
+        <div class="campaign">{{campaignTitle}}</div>
+      </div>
+
+      <div class="impact-box">
+        <h3>Your Impact</h3>
+        <p>Your contribution is making a real difference! Every donation brings us closer to our goal and helps create positive change in the community.</p>
+      </div>
+
+      <h3>Transaction Details</h3>
+      <div class="info-section">
+        <div class="info-row">
+          <span><strong>Transaction ID:</strong></span>
+          <span>{{transactionId}}</span>
+        </div>
+        <div class="info-row">
+          <span><strong>Campaign:</strong></span>
+          <span>{{campaignTitle}}</span>
+        </div>
+        <div class="info-row">
+          <span><strong>Amount:</strong></span>
+          <span>{{currency}} {{amount}}</span>
+        </div>
+        <div class="info-row">
+          <span><strong>Date:</strong></span>
+          <span>{{donatedAt}}</span>
+        </div>
+      </div>
+
+      <p><strong>What's Next?</strong></p>
+      <ul>
+        <li>Your donation is now supporting the campaign</li>
+        <li>You can track the campaign's progress on our platform</li>
+        <li>We'll keep you updated on the impact of your contribution</li>
+        <li>A tax receipt (if applicable) will be sent separately</li>
+      </ul>
+
+      <p>Thank you for being a changemaker and supporting this important cause!</p>
+      <p>Together, we're making the world a better place.</p>
+    </div>
+    <div class="footer">
+      <p>&copy; 2024 CareForAll. All rights reserved.</p>
+      <p>Keep this email for your records.</p>
+    </div>
+  </div>
+</body>
+</html>

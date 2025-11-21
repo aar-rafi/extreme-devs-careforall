@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to {{platformName}}</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .content {
+      padding: 40px 30px;
+      line-height: 1.6;
+      color: #333;
+    }
+    .content h2 {
+      color: #667eea;
+      margin-top: 0;
+    }
+    .cta-button {
+      display: inline-block;
+      padding: 14px 32px;
+      background-color: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 20px 0;
+      font-weight: 600;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 20px 30px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Welcome to {{platformName}}!</h1>
+    </div>
+    <div class="content">
+      <h2>Hello {{firstName}}!</h2>
+      <p>Thank you for joining {{platformName}}, a platform dedicated to making a positive impact through collective giving.</p>
+      <p>Your account has been successfully created with the email: <strong>{{email}}</strong></p>
+
+      <p>Here's what you can do:</p>
+      <ul>
+        <li>Browse and support meaningful campaigns</li>
+        <li>Create your own fundraising campaign</li>
+        <li>Track your donation history and impact</li>
+        <li>Connect with a community of changemakers</li>
+      </ul>
+
+      <center>
+        <a href="{{platformUrl}}/campaigns" class="cta-button">Explore Campaigns</a>
+      </center>
+
+      <p>If you have any questions, feel free to reach out to our support team.</p>
+      <p>Together, we can make a difference!</p>
+    </div>
+    <div class="footer">
+      <p>&copy; 2024 {{platformName}}. All rights reserved.</p>
+      <p>You're receiving this email because you registered an account with us.</p>
+    </div>
+  </div>
+</body>
+</html>

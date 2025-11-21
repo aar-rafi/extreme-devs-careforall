@@ -343,6 +343,63 @@ CREATE INDEX IF NOT EXISTS idx_system_notifications_unread ON admin.system_notif
 CREATE INDEX IF NOT EXISTS idx_system_notifications_severity ON admin.system_notifications(severity, created_at DESC);
 
 -- ============================================================================
+-- SCHEMA: notifications
+-- Owner: Notification Service
+-- Purpose: Email, SMS, and push notification management
+-- ============================================================================
+
+CREATE SCHEMA IF NOT EXISTS notifications;
+
+-- Notification history table - tracks all sent notifications
+CREATE TABLE IF NOT EXISTS notifications.notification_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  notification_type VARCHAR(50) NOT NULL CHECK (notification_type IN ('email', 'sms', 'push', 'in_app')),
+  event_type VARCHAR(100) NOT NULL,
+  event_id VARCHAR(255), -- For deduplication
+  recipient_email VARCHAR(255),
+  recipient_phone VARCHAR(20),
+  recipient_user_id UUID,
+  subject VARCHAR(255),
+  template_name VARCHAR(100),
+  template_data JSONB,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'failed', 'bounced')),
+  error_message TEXT,
+  sent_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Push notification subscriptions table
+CREATE TABLE IF NOT EXISTS notifications.push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL, -- Public key
+  auth TEXT NOT NULL, -- Auth secret
+  user_agent TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes for notifications schema
+CREATE INDEX IF NOT EXISTS idx_notification_history_user
+  ON notifications.notification_history(recipient_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_history_email
+  ON notifications.notification_history(recipient_email, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_history_status
+  ON notifications.notification_history(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_history_event
+  ON notifications.notification_history(event_type, event_id);
+CREATE INDEX IF NOT EXISTS idx_notification_history_type
+  ON notifications.notification_history(notification_type, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
+  ON notifications.push_subscriptions(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint
+  ON notifications.push_subscriptions(endpoint);
+
+-- ============================================================================
 -- Grant permissions (adjust based on your security requirements)
 -- ============================================================================
 

@@ -5,7 +5,7 @@ const { cache, getRedisClient, closeRedis } = require('./database/redis');
 // Utils
 const logger = require('./utils/logger');
 const { successResponse, errorResponse, paginatedResponse } = require('./utils/response');
-const { createQueue, publishEvent, createConsumer } = require('./utils/eventBus');
+const { createQueue, getQueue, publishEvent, createConsumer } = require('./utils/eventBus');
 
 // Middleware
 const { errorHandler, AppError } = require('./middleware/errorHandler');
@@ -29,6 +29,7 @@ module.exports = {
   errorResponse,
   paginatedResponse,
   createQueue,
+  getQueue,
   publishEvent,
   createConsumer,
 

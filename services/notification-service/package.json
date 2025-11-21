@@ -12,6 +12,11 @@
     "express": "^4.18.2",
     "dotenv": "^16.3.1",
     "cors": "^2.8.5",
-    "helmet": "^7.1.0"
+    "helmet": "^7.1.0",
+    "nodemailer": "^6.9.7",
+    "handlebars": "^4.7.8",
+    "web-push": "^3.6.6",
+    "bullmq": "^4.14.0",
+    "uuid": "^9.0.1"
   }
 }

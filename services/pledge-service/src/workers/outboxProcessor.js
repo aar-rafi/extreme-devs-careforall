@@ -44,7 +44,9 @@ async function processOutbox() {
     for (const event of events) {
       try {
         // Publish the event to BullMQ
-        await publishEvent(event.event_type, JSON.parse(event.payload));
+        // Note: payload is JSONB, so PostgreSQL returns it as an object, not a string
+        const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+        await publishEvent(event.event_type, payload);
 
         // Mark as processed
         await client.query(
