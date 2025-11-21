@@ -117,10 +117,11 @@ CREATE TABLE IF NOT EXISTS pledges.pledges (
   amount DECIMAL(15, 2) NOT NULL CHECK (amount > 0),
   currency VARCHAR(3) DEFAULT 'BDT',
   status VARCHAR(20) DEFAULT 'pending' CHECK (
-    status IN ('pending', 'payment_initiated', 'completed', 'failed', 'refunded')
+    status IN ('pending', 'payment_initiated', 'completed', 'failed', 'refunded', 'cancelled')
   ),
   is_anonymous BOOLEAN DEFAULT false,
   message TEXT,
+  payment_reference VARCHAR(255), -- Reference to payment transaction ID
   metadata JSONB, -- Additional donor info
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
@@ -129,11 +130,13 @@ CREATE TABLE IF NOT EXISTS pledges.pledges (
 -- Outbox pattern for reliable event publishing
 CREATE TABLE IF NOT EXISTS pledges.outbox (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  aggregate_id UUID NOT NULL, -- pledge_id
+  aggregate_id UUID NOT NULL, -- pledge_id or other aggregate ID
+  aggregate_type VARCHAR(50) NOT NULL, -- 'pledge', 'payment', etc.
   event_type VARCHAR(100) NOT NULL,
   payload JSONB NOT NULL,
   processed BOOLEAN DEFAULT false,
   retry_count INTEGER DEFAULT 0,
+  last_error TEXT, -- Store last error message for debugging
   created_at TIMESTAMP DEFAULT NOW(),
   processed_at TIMESTAMP
 );
