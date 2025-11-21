@@ -14,10 +14,12 @@ app.use(cors());
 // Note: express.json() removed - API Gateway is a pure proxy
 // Backend services handle their own body parsing
 
-// Rate limiting
+// Rate limiting - Development-friendly settings
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 1000, // 1000 requests per minute (very generous for development)
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
