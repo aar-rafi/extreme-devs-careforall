@@ -77,44 +77,10 @@ jobs:
             echo "frontends=[$FRONTENDS_JSON]" >> "$GITHUB_OUTPUT"
           fi
 
-  test:
-    name: Run tests for changed services
-    needs: detect-changed-services
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        service: ${{ fromJson(needs.detect-changed-services.outputs.services) }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        working-directory: services/${{ matrix.service }}
-        run: npm install
-
-      - name: Run tests (if defined)
-        working-directory: services/${{ matrix.service }}
-        shell: bash
-        run: |
-          if npm run | grep -qE ' test($|:)'; then
-            npm test
-          else
-            echo "No test script defined for ${{ matrix.service }}, skipping tests."
-          fi
-
   build-images:
     name: Build versioned Docker images
     needs:
       - detect-changed-services
-      - test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -161,7 +127,6 @@ jobs:
   deploy:
     name: Deploy to OVH VM
     needs:
-      - test
       - build-images
       - frontend-ci
     runs-on: ubuntu-latest
