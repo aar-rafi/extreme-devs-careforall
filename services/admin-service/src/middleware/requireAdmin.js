@@ -7,6 +7,16 @@ const { logger } = require('@careforall/shared');
  */
 function requireAdmin(req, res, next) {
   try {
+    // Demo bypass: allow public access to admin endpoints
+    if (process.env.DEMO_ALLOW_PUBLIC_ADMIN === 'true') {
+      req.user = {
+        userId: process.env.DEMO_DEFAULT_ADMIN_ID || '00000000-0000-0000-0000-0000000000ad',
+        email: 'demo-admin@local',
+        role: 'ADMIN',
+      };
+      return next();
+    }
+
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

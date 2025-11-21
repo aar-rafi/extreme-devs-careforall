@@ -18,11 +18,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login?redirect=/dashboard');
-    }
-  }, [isAuthenticated, router]);
+  // Authentication check disabled for demo
+  // useEffect(() => {
+  //   if (!isAuthenticated) {
+  //     router.push('/login?redirect=/dashboard');
+  //   }
+  // }, [isAuthenticated, router]);
 
   const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
     queryKey: ['user-campaigns'],
@@ -36,9 +37,10 @@ export default function DashboardPage() {
     enabled: !!user?.id,
   });
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // Authentication check disabled for demo
+  // if (!isAuthenticated) {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">

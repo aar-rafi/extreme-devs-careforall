@@ -6,13 +6,18 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { Navbar } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { campaignsApi, CreateCampaignData } from '@/lib/api/campaigns';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Navbar as NavbarComponent } from '@/components/navbar';
@@ -34,11 +39,12 @@ export default function CreateCampaignPage() {
   const { isAuthenticated } = useAuthStore();
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login?redirect=/campaigns/create');
-    }
-  }, [isAuthenticated, router]);
+  // Authentication check removed for now
+  // useEffect(() => {
+  //   if (!isAuthenticated) {
+  //     router.push('/login?redirect=/campaigns/create');
+  //   }
+  // }, [isAuthenticated, router]);
 
   const {
     register,
@@ -73,10 +79,6 @@ export default function CreateCampaignPage() {
     });
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <NavbarComponent />
@@ -105,9 +107,7 @@ export default function CreateCampaignPage() {
                     placeholder="e.g., Help Save My Father's Life"
                     {...register('title')}
                   />
-                  {errors.title && (
-                    <p className="text-sm text-red-500">{errors.title.message}</p>
-                  )}
+                  {errors.title && <p className="text-sm text-red-500">{errors.title.message}</p>}
                 </div>
 
                 <div className="space-y-2">

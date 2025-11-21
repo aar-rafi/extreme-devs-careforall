@@ -2,6 +2,8 @@ const paymentService = require('../services/paymentService');
 const { successResponse, errorResponse } = require('@careforall/shared/utils/response');
 const { AppError } = require('@careforall/shared/middleware/errorHandler');
 const { initiatePaymentSchema } = require('../validators/paymentValidators');
+const { storeIdempotencyResponse } = require('../middleware/idempotencyMiddleware');
+const { v4: uuidv4 } = require('uuid');
 
 class PaymentController {
   /**
@@ -28,7 +30,36 @@ class PaymentController {
         cancel_url: cancel_url || `${process.env.FRONTEND_URL}/payment/cancelled`,
       });
 
-      return successResponse(res, result, 201);
+      // Demo/production idempotency storage: persist the exact response we will send
+      try {
+        if (req.idempotencyKey && req.requestHash) {
+          const responseBody = {
+            success: true,
+            data: result,
+            meta: {
+              timestamp: new Date().toISOString(),
+              requestId: res.locals.requestId || uuidv4(),
+            },
+          };
+          await storeIdempotencyResponse(
+            req.idempotencyKey,
+            req.requestHash,
+            responseBody,
+            201
+          );
+        }
+      } catch (e) {
+        // Non-fatal: if storing idempotency fails, we still return success
+      }
+
+      return res.status(201).json({
+        success: true,
+        data: result,
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: res.locals.requestId || uuidv4(),
+        },
+      });
     } catch (error) {
       next(error);
     }

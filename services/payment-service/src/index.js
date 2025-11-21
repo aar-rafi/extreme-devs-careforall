@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -18,6 +18,8 @@ const SERVICE_NAME = process.env.SERVICE_NAME || 'payment-service';
 
 app.use(helmet());
 app.use(cors());
+// Parse URL-encoded bodies (SSLCommerz IPN typically sends application/x-www-form-urlencoded)
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(requestLogger);
 app.use(metricsMiddleware(SERVICE_NAME));

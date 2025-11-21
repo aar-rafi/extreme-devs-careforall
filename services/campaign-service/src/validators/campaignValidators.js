@@ -6,12 +6,16 @@ const createCampaignSchema = Joi.object({
   campaign_type: Joi.string().valid('medical', 'education', 'emergency', 'long_term').required(),
   goal_amount: Joi.number().positive().required(),
   start_date: Joi.date().iso().optional(),
-  end_date: Joi.date().iso().greater(Joi.ref('start_date')).optional(),
+  end_date: Joi.when('start_date', {
+    is: Joi.exist(),
+    then: Joi.date().iso().greater(Joi.ref('start_date')).optional(),
+    otherwise: Joi.date().iso().optional(),
+  }),
   beneficiary_name: Joi.string().max(255).optional(),
   beneficiary_details: Joi.string().optional(),
   image_url: Joi.string().uri().optional(),
   documents: Joi.object().optional(),
-});
+}).unknown(true); // Allow extra fields for demo mode
 
 const updateCampaignSchema = Joi.object({
   title: Joi.string().min(5).max(255).optional(),
@@ -23,7 +27,7 @@ const updateCampaignSchema = Joi.object({
   beneficiary_details: Joi.string().optional(),
   image_url: Joi.string().uri().optional(),
   documents: Joi.object().optional(),
-}).min(1);
+}).min(1).unknown(true); // Allow extra fields for demo mode
 
 const updateStatusSchema = Joi.object({
   status: Joi.string().valid('draft', 'active', 'completed', 'cancelled', 'expired').required(),

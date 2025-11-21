@@ -15,6 +15,7 @@ const EVENTS = {
   PAYMENT_AUTHORIZED: 'payment.authorized',
   PAYMENT_CAPTURED: 'payment.captured',
   PAYMENT_COMPLETED: 'payment.completed',
+  PAYMENT_COMPLETE: 'payment.complete',
   PAYMENT_FAILED: 'payment.failed',
   PAYMENT_REFUNDED: 'payment.refunded',
 

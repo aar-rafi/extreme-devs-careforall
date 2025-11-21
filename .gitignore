@@ -53,3 +53,6 @@ temp/
 prometheus-data/
 grafana-data/
 elasticsearch-data/
+
+# OpenMemory - IDE/Assistant specific rules
+.cursor/rules/openmemory.mdc

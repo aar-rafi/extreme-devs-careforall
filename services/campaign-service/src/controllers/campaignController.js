@@ -45,8 +45,20 @@ class CampaignController {
         throw new AppError(error.details[0].message, 400, 'VALIDATION_ERROR');
       }
 
-      // Set organizer from authenticated user
-      value.organizer_id = req.user.userId;
+      // Set organizer from authenticated user or demo mode fallback
+      const isDemoPublicCreate = process.env.DEMO_ALLOW_PUBLIC_CAMPAIGN_CREATE === 'true';
+      const organizerId =
+        (req.user && req.user.userId) ||
+        (isDemoPublicCreate
+          ? (req.body.organizer_id ||
+             process.env.DEMO_DEFAULT_ORGANIZER_ID ||
+             '00000000-0000-0000-0000-000000000001')
+          : null);
+
+      if (!organizerId) {
+        throw new AppError('Authentication required', 401, 'UNAUTHORIZED');
+      }
+      value.organizer_id = organizerId;
 
       const campaign = await campaignService.createCampaign(value);
       return successResponse(res, campaign, 201);

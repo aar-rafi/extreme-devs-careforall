@@ -17,14 +17,15 @@ export default function AdminCampaignsPage() {
   const { user, isAuthenticated, isHydrated } = useAuthStore();
   const [filter, setFilter] = useState('all');
 
-  useEffect(() => {
-    // Don't redirect until auth state is hydrated from localStorage
-    if (!isHydrated) return;
-
-    if (!isAuthenticated || user?.role !== 'ADMIN') {
-      router.push('/login');
-    }
-  }, [isAuthenticated, user, router, isHydrated]);
+  // Authentication check disabled for demo
+  // useEffect(() => {
+  //   // Don't redirect until auth state is hydrated from localStorage
+  //   if (!isHydrated) return;
+  //
+  //   if (!isAuthenticated || user?.role !== 'ADMIN') {
+  //     router.push('/login');
+  //   }
+  // }, [isAuthenticated, user, router, isHydrated]);
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['admin-campaigns', filter],
@@ -32,7 +33,7 @@ export default function AdminCampaignsPage() {
       adminApi.getCampaigns({
         status: filter !== 'all' ? filter : undefined,
       }),
-    enabled: isAuthenticated && user?.role === 'ADMIN',
+    enabled: true, // Enabled for demo (no auth gating)
   });
 
   const updateStatusMutation = useMutation({
@@ -44,18 +45,19 @@ export default function AdminCampaignsPage() {
     },
   });
 
-  // Show loading while auth is being hydrated from localStorage
-  if (!isHydrated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || user?.role !== 'ADMIN') {
-    return null;
-  }
+  // Authentication checks disabled for demo
+  // // Show loading while auth is being hydrated from localStorage
+  // if (!isHydrated) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-lg">Loading...</div>
+  //     </div>
+  //   );
+  // }
+  //
+  // if (!isAuthenticated || user?.role !== 'ADMIN') {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">

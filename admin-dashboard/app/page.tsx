@@ -14,23 +14,22 @@ export default function AdminDashboard() {
   const { user, isAuthenticated, logout, isHydrated } = useAuthStore();
 
   useEffect(() => {
-    // Don't redirect until auth state is hydrated from localStorage
-    if (!isHydrated) return;
-
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
-    if (user?.role !== 'ADMIN') {
-      alert('Access denied. Admin access required.');
-      router.push('/login');
-    }
+    // Authentication checks disabled for demo
+    // if (!isHydrated) return;
+    // if (!isAuthenticated) {
+    //   router.push('/login');
+    //   return;
+    // }
+    // if (user?.role !== 'ADMIN') {
+    //   alert('Access denied. Admin access required.');
+    //   router.push('/login');
+    // }
   }, [isAuthenticated, user, router, isHydrated]);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => adminApi.getStats(),
-    enabled: isAuthenticated && user?.role === 'ADMIN',
+    enabled: true, // Enabled for demo (no auth gating)
   });
 
   const handleLogout = () => {
@@ -39,17 +38,18 @@ export default function AdminDashboard() {
   };
 
   // Show loading while auth is being hydrated from localStorage
-  if (!isHydrated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
+  // if (!isHydrated) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-lg">Loading...</div>
+  //     </div>
+  //   );
+  // }
 
-  if (!isAuthenticated || user?.role !== 'ADMIN') {
-    return null;
-  }
+  // Authentication check disabled for demo
+  // if (!isAuthenticated || user?.role !== 'ADMIN') {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary">CareForAll Admin</h1>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-sm text-muted-foreground">{user?.email || 'Admin User'}</span>
               <Button variant="outline" onClick={handleLogout}>
                 Logout
               </Button>

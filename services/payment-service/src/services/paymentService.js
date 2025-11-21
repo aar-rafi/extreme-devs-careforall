@@ -165,6 +165,12 @@ class PaymentService {
         };
 
         await publishEvent(eventType, eventPayload);
+
+        // Always emit payment.complete to signal end of payment attempt,
+        // even when the result is not "completed" (e.g., failed/cancelled).
+        if (['completed', 'failed', 'refunded'].includes(updatedPayment.status)) {
+          await publishEvent(EVENTS.PAYMENT_COMPLETE, eventPayload);
+        }
       }
 
       await client.query('COMMIT');
@@ -264,7 +270,36 @@ class PaymentService {
 
       await client.query('COMMIT');
 
-      // Initiate payment with SSL Commerz
+      // DEMO: Pre-advance state to authorized -> captured, then still initiate gateway
+      if (process.env.DEMO_FORCE_PAYMENT_SUCCESS === 'true') {
+        // Follow valid transitions: pending -> authorized -> captured
+        await this.updatePaymentStatus(
+          paymentId,
+          'authorized',
+          {
+            payment_method: 'demo',
+            gateway_response: { demo: true, reason: 'DEMO_FORCE_PAYMENT_SUCCESS', stage: 'authorized' },
+          },
+          'Demo forced success'
+        );
+
+        await this.updatePaymentStatus(
+          paymentId,
+          'captured',
+          {
+            gateway_response: { demo: true, reason: 'DEMO_FORCE_PAYMENT_SUCCESS', stage: 'captured' },
+          },
+          'Demo forced success'
+        );
+
+        logger.warn('Demo mode: forcing payment success', {
+          paymentId,
+          pledgeId: pledge_id,
+          transactionId,
+        });
+      }
+
+      // Initiate payment with SSL Commerz (normal flow)
       const baseUrl = process.env.API_GATEWAY_URL || 'http://localhost:3000';
       const sslCommerzData = {
         tran_id: transactionId,

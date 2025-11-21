@@ -43,14 +43,12 @@ export function Navbar() {
               >
                 Campaigns
               </Link>
-              {isAuthenticated && (
-                <Link
-                  href="/campaigns/create"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                >
-                  Start Campaign
-                </Link>
-              )}
+              <Link
+                href="/campaigns/create"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Start Campaign
+              </Link>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -11,6 +11,7 @@ const {
 } = require('@careforall/shared');
 
 const campaignRoutes = require('./routes/campaignRoutes');
+const { startPledgeConsumer } = require('./consumers/pledgeConsumer');
 
 const app = express();
 const PORT = process.env.CAMPAIGN_SERVICE_PORT || 3002;
@@ -40,6 +41,12 @@ app.use(errorHandler);
 // Start server
 app.listen(PORT, () => {
   logger.info(`Campaign Service running on port ${PORT}`);
+  try {
+    startPledgeConsumer();
+    logger.info('Campaign Service pledge consumer started');
+  } catch (error) {
+    logger.error('Failed to start pledge consumer', { error: error.message });
+  }
 });
 
 // Graceful shutdown
