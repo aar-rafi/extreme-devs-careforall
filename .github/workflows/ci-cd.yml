@@ -1,12 +1,12 @@
 name: CI/CD - CareForAll
 
 on:
+  # Run CI on every push to any branch
   push:
-    branches:
-      - main , claude/fix-grafana-prometheus-01D13D5FLByqLQEak8U92KSH
+  # Require CI on PRs into the default branch
   pull_request:
     branches:
-      - main, claude/fix-grafana-prometheus-01D13D5FLByqLQEak8U92KSH
+      - main
 
 jobs:
   detect-changed-services:
@@ -174,7 +174,6 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || '22' }}
           script: |
             set -e
             cd /opt/careforall   # <-- change this to the directory of your repo on the VM
